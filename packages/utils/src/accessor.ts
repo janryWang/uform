@@ -1,26 +1,50 @@
 import { isStr, isNum, isPlainObj, isArr, isObj } from './types'
 import { map, each, every } from './array'
 import { LRUMap } from './lru'
-function whitespace(c) {
+
+type TokenizerHandlers = {
+  name(str: string): void
+  destructObjectStart(): void
+  destructObjectEnd(): void
+  destructArrayStart(): void
+  destructArrayEnd(): void
+  destructKey(str: string, isColon?: boolean): void
+}
+
+export type Path = Array<string | number> | string
+
+type Destruct = {
+  [key: string]: string
+} | Path
+
+type TraverseCallback = (path: string[], item: any) => void
+
+type Getter = (obj: any, path: Path, value?: any) => any
+
+type Setter = (obj: any, path: Path, value?: any) => any
+
+type HasIn = (obj: any, path: Path) => boolean
+
+function whitespace(c: string) {
   return c === ' ' || c === '\n' || c === '\t' || c === '\f' || c === '\r'
 }
 
-function toString(val) {
+function toString(val: Path | null) {
   if (!val) return ''
   if (isArr(val)) {
-    return val.join('.')
+    return (val as Array<string>).join('.')
   }
   return isStr(val) ? val : ''
 }
 
 const PathCache = new LRUMap(1000)
 
-export function getPathSegments(path) {
-  if (isArr(path)) return path
+export function getPathSegments(path: Array<string | number> | string | number | null): Array<string | number> {
+  if (isArr(path)) return path as Array<string>
   if (isStr(path) && path) {
     const cached = PathCache.get(path)
     if (cached) return cached
-    const pathArr = path.split('.')
+    const pathArr = (path as string).split('.')
     const parts = []
 
     for (let i = 0; i < pathArr.length; i++) {
@@ -36,24 +60,43 @@ export function getPathSegments(path) {
     PathCache.set(path, parts)
     return parts
   }
-  if (isNum(path)) return [path]
+  if (isNum(path)) return [path as number]
   return []
 }
 
 class DestructTokenizer {
-  constructor(text, cbs) {
+
+  private text: string
+
+  private index: number
+
+  private handlers: TokenizerHandlers
+
+  private state: (char: string, prev?: string) => void
+
+  private declareNameStart: number
+
+  private declareNameEnd: number
+
+  private nbraceCount: number
+
+  private nbracketCount: number
+
+  private EOF: boolean
+
+  private destructKeyStart: number
+
+  private destructKey: string
+
+  constructor(text: string, handlers: TokenizerHandlers) {
     this.text = text
     this.index = 0
-    this.cbs = cbs
+    this.handlers = handlers
     this.state = this.processNameStart
     this.declareNameStart = 0
     this.declareNameEnd = 0
     this.nbraceCount = 0
     this.nbracketCount = 0
-  }
-
-  goto(name) {
-    this.state = this.StateMap[name]
   }
 
   parse() {
@@ -68,7 +111,7 @@ class DestructTokenizer {
     }
   }
 
-  processNameStart(char) {
+  processNameStart(char: string) {
     if (char === '{' || char === '[') {
       this.state = this.processDestructStart
       this.index--
@@ -78,23 +121,23 @@ class DestructTokenizer {
     }
   }
 
-  processName(char, prev) {
+  processName(char: string, prev: string) {
     if (whitespace(char)) {
       this.declareNameEnd = this.index
-      this.cbs.name(this.getName())
+      this.handlers.name(this.getName())
     } else if (this.EOF) {
       this.declareNameEnd = this.index + 1
-      this.cbs.name(this.getName())
+      this.handlers.name(this.getName())
     }
   }
 
   processDestructStart(char) {
     if (char === '{') {
       this.nbraceCount++
-      this.cbs.destructObjectStart()
+      this.handlers.destructObjectStart()
     } else if (char === '[') {
       this.nbracketCount++
-      this.cbs.destructArrayStart()
+      this.handlers.destructArrayStart()
     } else if (!whitespace(char)) {
       this.state = this.processDestructKey
       this.destructKeyStart = this.index
@@ -102,7 +145,7 @@ class DestructTokenizer {
     }
   }
 
-  processDestructKey(char, prev) {
+  processDestructKey(char: string, prev: string) {
     if (char === '}') {
       this.nbraceCount--
 
@@ -116,8 +159,8 @@ class DestructTokenizer {
         )
       }
 
-      this.cbs.destructKey(this.destructKey)
-      this.cbs.destructObjectEnd()
+      this.handlers.destructKey(this.destructKey)
+      this.handlers.destructObjectEnd()
       if (!this.nbraceCount && !this.nbracketCount) {
         this.index = this.text.length
       }
@@ -133,8 +176,8 @@ class DestructTokenizer {
           this.index
         )
       }
-      this.cbs.destructKey(this.destructKey)
-      this.cbs.destructArrayEnd()
+      this.handlers.destructKey(this.destructKey)
+      this.handlers.destructArrayEnd()
       if (!this.nbraceCount && !this.nbracketCount) {
         this.index = this.text.length
       }
@@ -147,7 +190,7 @@ class DestructTokenizer {
       }
       if (!whitespace(char)) {
         this.state = this.processDestructStart
-        this.cbs.destructKey(this.destructKey, char === ':')
+        this.handlers.destructKey(this.destructKey, char === ':')
       }
     }
   }
@@ -157,18 +200,19 @@ class DestructTokenizer {
   }
 }
 
-const parseDestruct = string => {
+
+const parseDestruct = (string: string | number) => {
   if (!isStr(string)) return string
 
-  let destruct
+  let destruct: Destruct
   let stack = []
   let token = ''
   let realKey = ''
-  let lastDestruct
-  let root
+  let lastDestruct: Destruct
+  let root: Destruct
 
-  new DestructTokenizer(string, {
-    name(key) {
+  new DestructTokenizer(string as string, {
+    name(key: string) {
       root = key
     },
     destructKey(key, readyReplace) {
@@ -180,7 +224,7 @@ const parseDestruct = string => {
         return
       }
       if (isArr(destruct)) {
-        destruct.push(key)
+        (destruct as Array<string>).push(key)
       } else if (isPlainObj(destruct)) {
         destruct[realKey && lastDestruct === destruct ? realKey : key] = key
       }
@@ -229,10 +273,10 @@ const parseDestruct = string => {
   return root
 }
 
-const traverse = (obj, callback) => {
-  const _traverse = (obj, path, callback) => {
+const traverse = (obj: any, callback: TraverseCallback) => {
+  const _traverse = (obj: any, path: string[], callback: TraverseCallback) => {
     if (isStr(obj)) return callback(obj, obj)
-    each(obj, (item, key) => {
+    each(obj, (item: any, key: string) => {
       const _path = path.concat(key)
       if (isArr(item) || isPlainObj(item)) {
         _traverse(item, _path, callback)
@@ -245,9 +289,9 @@ const traverse = (obj, callback) => {
   return _traverse(obj, [], callback)
 }
 
-const mapReduce = (obj, callback) => {
-  const _traverse = (obj, path, callback) => {
-    return map(obj, (item, key) => {
+const mapReduce = (obj: any, callback: TraverseCallback) => {
+  const _traverse = (obj: any, path: string[], callback: TraverseCallback) => {
+    return map(obj, (item: any, key: string) => {
       const _path = path.concat(key)
       if (isArr(item) || isPlainObj(item)) {
         return _traverse(item, _path, callback)
@@ -260,7 +304,7 @@ const mapReduce = (obj, callback) => {
   return _traverse(obj, [], callback)
 }
 
-const parseDesturctPath = path => {
+const parseDesturctPath = (path: Path): any => {
   const _path = getPathSegments(path)
   const lastKey = _path[_path.length - 1]
   const startPath = _path.slice(0, _path.length - 1)
@@ -273,7 +317,7 @@ const parseDesturctPath = path => {
   }
 }
 
-const parsePaths = path => {
+const parsePaths = (path: Path): any => {
   const result = []
   const parsed = parseDesturctPath(path)
   if (isStr(parsed.destruct)) {
@@ -293,9 +337,9 @@ const parsePaths = path => {
   }
 }
 
-const resolveGetIn = get => {
+const resolveGetIn = (get: Getter) => {
   const cache = new Map()
-  return (obj, path, value) => {
+  return (obj: any, path: Path, value?: any): any => {
     let ast = null
     if (!(ast = cache.get(path))) {
       ast = parseDesturctPath(path)
@@ -310,9 +354,9 @@ const resolveGetIn = get => {
   }
 }
 
-const resolveUpdateIn = (update, getIn) => {
+const resolveUpdateIn = (update: Setter, getIn: Getter) => {
   const cache = new Map()
-  return (obj, path, value) => {
+  return (obj: any, path: Path, value: any) => {
     let paths = []
     if (!(paths = cache.get(path))) {
       paths = parsePaths(path)
@@ -328,9 +372,9 @@ const resolveUpdateIn = (update, getIn) => {
   }
 }
 
-const resolveExistIn = has => {
+const resolveExistIn = (has: HasIn) => {
   const cache = new Map()
-  return (obj, path) => {
+  return (obj: any, path: Path) => {
     let paths = []
     if (!(paths = cache.get(path))) {
       paths = parsePaths(path)
@@ -349,7 +393,7 @@ const resolveExistIn = has => {
   }
 }
 
-function _getIn(obj, path, value) {
+function _getIn(obj: any, path: Path, value: any) {
   if (!isObj(obj) || !path) {
     return obj
   }
@@ -357,7 +401,7 @@ function _getIn(obj, path, value) {
   path = toString(path)
 
   if (path in obj) {
-    return obj[path]
+    return obj[path as string]
   }
 
   const pathArr = getPathSegments(path)
@@ -386,7 +430,7 @@ function _getIn(obj, path, value) {
   return obj
 }
 
-function _setIn(obj, path, value) {
+function _setIn(obj: any, path: Path, value: any) {
   if (!isObj(obj) || !path) {
     return
   }
@@ -394,7 +438,7 @@ function _setIn(obj, path, value) {
   path = toString(path)
 
   if (path in obj) {
-    obj[path] = value
+    obj[path as string] = value
     return
   }
 
@@ -415,7 +459,7 @@ function _setIn(obj, path, value) {
   }
 }
 
-function _deleteIn(obj, path) {
+function _deleteIn(obj: any, path: Path) {
   if (!isObj(obj) || !path) {
     return
   }
@@ -423,7 +467,7 @@ function _deleteIn(obj, path) {
   path = toString(path)
 
   if (path in obj) {
-    delete obj[path]
+    delete obj[path as string]
     return
   }
 
@@ -449,7 +493,7 @@ function _deleteIn(obj, path) {
   }
 }
 
-function _existIn(obj, path) {
+function _existIn(obj: any, path: Path) {
   if (!isObj(obj) || !path) {
     return false
   }
