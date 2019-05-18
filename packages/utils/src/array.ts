@@ -4,20 +4,20 @@ type EachCallback = (item: any, key: string | number) => void | boolean
 
 type ReduceCallback = (buffer: any, item: any, key: string | number) => void | boolean
 
-type ArrayLike = object | Array<any>
+type ArrayLike = object | any[]
 
-export const toArr = (val: any): Array<any> => (isArr(val) ? val : val ? [val] : [])
+export const toArr = (val: any): any[] => (isArr(val) ? val : val ? [val] : [])
 
 export const each = (val: ArrayLike, callback: EachCallback, revert?: boolean) => {
   if (isArr(val)) {
     if (revert) {
-      for (let i: number = (val as Array<any>).length - 1; i >= 0; i--) {
+      for (let i: number = (val as any[]).length - 1; i >= 0; i--) {
         if (callback(val[i], i) === false) {
           return
         }
       }
     } else {
-      for (let i: number = 0, length = (val as Array<any>).length; i < length; i++) {
+      for (let i: number = 0, length = (val as any[]).length; i < length; i++) {
         if (callback(val[i], i) === false) {
           return
         }
@@ -36,13 +36,13 @@ export const each = (val: ArrayLike, callback: EachCallback, revert?: boolean) =
 }
 
 export const map = (val: ArrayLike, callback: EachCallback, revert?: boolean): ArrayLike => {
-  let res = isArr(val) ? [] : {}
+  const res = isArr(val) ? [] : {}
   each(
     val,
     (item, key) => {
       const value = callback(item, key)
       if (isArr(res)) {
-        (res as Array<any>).push(value)
+        (res as any[]).push(value)
       } else {
         res[key] = value
       }
@@ -129,5 +129,5 @@ export const find = (val: ArrayLike, callback: EachCallback, revert?: boolean): 
 }
 
 export const includes = (val: ArrayLike, searchElement: any, revert: boolean): boolean => {
-  return some(val, item => item === searchElement, revert)
+  return some(val, (item) => item === searchElement, revert)
 }
