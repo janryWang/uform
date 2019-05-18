@@ -1,4 +1,4 @@
-import camelCase from 'camel-case'
+import camelCase = require('camel-case');
 export { camelCase }
 
 export const lowercase = (str: any) => String(str || '').toLowerCase()
