@@ -5,6 +5,8 @@ type Subscriber = (notification: any) => void
 
 type Filter = (payload: any, subscription: any) => any
 
+function noop () {}
+
 export class Broadcast {
   private entries = []
   private buffer = []
@@ -12,7 +14,7 @@ export class Broadcast {
 
   public subscribe(subscriber: Subscriber, subscription: any) {
     if (!isFn(subscriber)) {
-      return () => ({})
+      return noop
     }
     const index = this.entries.length
     this.entries.push({
