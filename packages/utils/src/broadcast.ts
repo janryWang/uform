@@ -10,9 +10,11 @@ export class Broadcast {
   private buffer = []
   private length: number
 
-  subscribe(subscriber: Subscriber, subscription: any) {
-    if (!isFn(subscriber)) return () => { }
-    let index = this.entries.length
+  public subscribe(subscriber: Subscriber, subscription: any) {
+    if (!isFn(subscriber)) {
+      return () => ({})
+    }
+    const index = this.entries.length
     this.entries.push({
       subscriber,
       subscription
@@ -23,16 +25,17 @@ export class Broadcast {
     }
   }
 
-  unsubscribe() {
+  public unsubscribe() {
     this.entries.length = 0
     this.buffer.length = 0
   }
 
-  flushBuffer({ subscriber, subscription }) {
+  public flushBuffer({ subscriber, subscription }) {
     each(this.buffer, ({ payload, filter }) => {
       if (isFn(filter)) {
         let notification: any
-        if ((notification = filter(payload, subscription))) {
+        if (filter(payload, subscription)) {
+          notification = filter(payload, subscription)
           subscriber(notification)
         }
       } else {
@@ -41,7 +44,7 @@ export class Broadcast {
     })
   }
 
-  notify(payload: any, filter: Filter) {
+  public notify(payload: any, filter: Filter) {
     if (this.length === 0) {
       this.buffer.push({ payload, filter })
       return
@@ -49,7 +52,8 @@ export class Broadcast {
     each(this.entries, ({ subscriber, subscription }) => {
       if (isFn(filter)) {
         let notification: any
-        if ((notification = filter(payload, subscription))) {
+        if (filter(payload, subscription)) {
+          notification = filter(payload, subscription)
           subscriber(notification)
         }
       } else {
