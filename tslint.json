@@ -13,7 +13,15 @@
     "semicolon": [
       true,
       "never"
-    ]
+    ],
+    "ordered-imports": false,
+    "object-literal-key-quotes": [
+      true,
+      "as-needed"
+    ],
+    "object-literal-sort-keys": false,
+    "trailing-comma": false,
+    "prefer-for-of": false
   },
   "rulesDirectory": [],
   "linterOptions": {
