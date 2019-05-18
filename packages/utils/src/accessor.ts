@@ -11,7 +11,7 @@ interface ITokenizerHandlers {
   destructKey(str: string, isColon?: boolean): void
 }
 
-export type Path = Array<string | number> | string
+export type Path = string[] | number[] | string | number | null
 
 type Destruct = {
   [key: string]: string
@@ -39,7 +39,7 @@ function toString(val: Path | null) {
 
 const PathCache = new LRUMap(1000)
 
-export function getPathSegments(path: string[] | number[] | string | number | null): string[] | number[] {
+export function getPathSegments(path: Path): string[] | number[] {
   if (isArr(path)) { return path as string[] }
   if (isStr(path) && path) {
     const cached = PathCache.get(path)
