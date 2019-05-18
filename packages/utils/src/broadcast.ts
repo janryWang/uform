@@ -5,7 +5,7 @@ type Subscriber = (notification: any) => void
 
 type Filter = (payload: any, subscription: any) => any
 
-function noop () {}
+const noop = () => undefined
 
 export class Broadcast {
   private entries = []
