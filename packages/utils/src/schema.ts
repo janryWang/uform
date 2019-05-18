@@ -6,6 +6,8 @@ const numberRE = /^\d+$/
 const VIRTUAL_BOXES = {}
 
 type traverseCallback = (schema: ISchema, payload: any, path?: Path) => void
+// todo
+type IPath = any;
 
 interface IPathInfo {
   name: string
@@ -78,7 +80,7 @@ const isVirtualBoxSchema = (schema: ISchema) => {
 }
 
 const schemaTraverse = (schema: ISchema, callback: traverseCallback,
-                        path: Array<number | string> = [], schemaPath = []) => {
+  path: IPath = [], schemaPath = []) => {
   if (schema) {
     if (isVirtualBoxSchema(schema)) {
       path = path.slice(0, path.length - 1)
