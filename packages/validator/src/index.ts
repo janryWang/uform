@@ -10,9 +10,10 @@ import {
   format
 } from './utils'
 import { validate } from './validators'
+import { ValidateHandler, ValidateResponse, FieldMap } from '@uform/types'
 export * from './message'
 
-const flatArr = arr => {
+const flatArr = (arr: any[]) => {
   return reduce(
     arr,
     (buf, item) => {
@@ -28,35 +29,35 @@ const flatArr = arr => {
 
 export { format }
 
-export const runValidation = (values, fieldMap, forceUpdate, callback) => {
+export const runValidation = async (values: object, fieldMap: FieldMap, forceUpdate: boolean | ValidateHandler, callback: ValidateHandler): Promise<ValidateResponse[]> => {
   const queue = []
   if (isFn(forceUpdate)) {
-    callback = forceUpdate
+    callback = forceUpdate as ValidateHandler
     forceUpdate = false
   }
   each(fieldMap, (field, name) => {
     const value = getIn(values, name)
-    if (field.visible === false || field.editable === false) return
-    if (isEqual(field.__lastValidateValue, value) && !forceUpdate) return
+    if (field.visible === false || field.editable === false) { return }
+    if (isEqual(field.__lastValidateValue, value) && !forceUpdate) { return }
     const title = field.props && field.props.title
-    let rafId = setTimeout(() => {
+    const rafId = setTimeout(() => {
       field.loading = true
       field.dirty = true
-      if (field.notify) field.notify()
+      if (field.notify) { field.notify() }
     }, 100)
     queue.push(
       Promise.all(
-        toArr(field.rules).map(rule => {
+        toArr(field.rules).map((rule) => {
           return validate(value, rule, values, title || name)
         })
-      ).then(errors => {
+      ).then((errors) => {
         clearTimeout(rafId)
-        let lastFieldErrors = field.errors
+        const lastFieldErrors = field.errors
         const lastValid = field.valid
         const lastLoading = field.loading
         field.loading = false
         if (forceUpdate) {
-          if (errors) field.errors = flatArr(toArr(errors))
+          if (errors) { field.errors = flatArr(toArr(errors)) }
           if (field.errors.length) {
             field.valid = false
             field.invalid = true
@@ -69,7 +70,7 @@ export const runValidation = (values, fieldMap, forceUpdate, callback) => {
           }
         } else {
           if (!field.pristine) {
-            if (errors) field.errors = flatArr(toArr(errors))
+            if (errors) { field.errors = flatArr(toArr(errors)) }
             if (field.errors.length) {
               field.valid = false
               field.invalid = true
@@ -106,7 +107,7 @@ export const runValidation = (values, fieldMap, forceUpdate, callback) => {
     )
   })
 
-  return Promise.all(queue).then(response => {
+  return Promise.all(queue).then((response) => {
     if (isFn(callback)) {
       callback(response)
     }

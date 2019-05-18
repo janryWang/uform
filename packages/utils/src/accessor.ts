@@ -1,6 +1,6 @@
-import { isStr, isNum, isPlainObj, isArr, isObj } from './types'
 import { map, each, every } from './array'
 import { LRUMap } from './lru'
+import { Path, PathNode, ArrayPath, isStr, isNum, isPlainObj, isArr, isObj } from '@uform/types'
 
 interface ITokenizerHandlers {
   name(str: string): void
@@ -16,8 +16,6 @@ export type Path = string[] | number[] | string | number | null
 type Destruct = {
   [key: string]: string
 } | Path
-
-type TraverseCallback = (path: string[], item: any) => void
 
 type Getter = (obj: any, path: Path, value?: any) => any
 
@@ -39,7 +37,7 @@ function toString(val: Path | null) {
 
 const PathCache = new LRUMap(1000)
 
-export function getPathSegments(path: Path): string[] | number[] {
+export function getPathSegments(path: Path): ArrayPath {
   if (isArr(path)) { return path as string[] }
   if (isStr(path) && path) {
     const cached = PathCache.get(path)
@@ -200,7 +198,7 @@ class DestructTokenizer {
   }
 }
 
-const parseDestruct = (str: string | number) => {
+const parseDestruct = (str: PathNode) => {
   if (!isStr(str)) { return str }
 
   let destruct: Destruct
@@ -272,35 +270,35 @@ const parseDestruct = (str: string | number) => {
   return root
 }
 
-const traverse = (obj: any, callback: TraverseCallback) => {
-  const internalTraverse = (internalObj: any, path: string[], internalCallback: TraverseCallback) => {
-    if (isStr(internalObj)) { return internalCallback(internalObj, internalObj) }
+const traverse = (obj: any, callback: any) => {
+  const internalTraverse = (internalObj: any, path: string[]) => {
+    if (isStr(internalObj)) { return callback(internalObj, internalObj) }
     each(internalObj, (item: any, key: string) => {
       const newPath = path.concat(key)
       if (isArr(item) || isPlainObj(item)) {
-        internalTraverse(item, newPath, internalCallback)
+        internalTraverse(item, newPath)
       } else {
-        internalCallback(newPath, item)
+        callback(newPath, item)
       }
     })
   }
 
-  return internalTraverse(obj, [], callback)
+  return internalTraverse(obj, [])
 }
 
-const mapReduce = (obj: any, callback: TraverseCallback) => {
-  const internalTraverse = (internalObj: any, path: string[], internalCallback: TraverseCallback) => {
+const mapReduce = (obj: any, callback: any) => {
+  const internalTraverse = (internalObj: any, path: string[]) => {
     return map(internalObj, (item: any, key: string) => {
       const newPath = path.concat(key)
       if (isArr(item) || isPlainObj(item)) {
-        return internalTraverse(item, newPath, internalCallback)
+        return internalTraverse(item, newPath)
       } else {
-        return internalCallback(newPath, newPath.slice(0, newPath.length - 1).concat(item))
+        return callback(newPath, newPath.slice(0, newPath.length - 1).concat(item))
       }
     })
   }
 
-  return internalTraverse(obj, [], callback)
+  return internalTraverse(obj, [])
 }
 
 const parseDesturctPath = (path: Path): any => {
@@ -359,7 +357,7 @@ const resolveGetIn = (get: Getter) => {
 const resolveUpdateIn = (update: Setter, internalGetIn: Getter) => {
   const cache = new Map()
   return (obj: any, path: Path, value: any) => {
-    let paths = []
+    let paths: any = []
     if (!cache.get(path)) {
       paths = parsePaths(path)
       cache.set(path, paths)
@@ -379,7 +377,7 @@ const resolveUpdateIn = (update: Setter, internalGetIn: Getter) => {
 const resolveExistIn = (has: HasIn) => {
   const cache = new Map()
   return (obj: any, path: Path) => {
-    let paths = []
+    let paths: any = []
     if (!cache.get(path)) {
       paths = parsePaths(path)
       cache.set(path, paths)
@@ -484,7 +482,7 @@ function _deleteIn(obj: any, path: Path) {
 
     if (i === pathArr.length - 1) {
       if (isArr(obj)) {
-        obj.splice(p, 1)
+        obj.splice(p as number, 1)
       } else {
         delete obj[p]
       }

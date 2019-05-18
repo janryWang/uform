@@ -1,19 +1,9 @@
 import { each, toArr } from './array'
-import { getIn, setIn, Path } from './accessor'
-import { isFn } from './types'
+import { getIn, setIn } from './accessor'
+import { isFn, Path, Schema, ArrayPath } from '@uform/types'
 import { isEmpty } from './isEmpty'
 const numberRE = /^\d+$/
 const VIRTUAL_BOXES = {}
-
-type traverseCallback = (schema: ISchema, payload: any, path?: Path) => void
-// todo
-type IPath = any;
-
-interface IPathInfo {
-  name: string
-  path: string[]
-  schemaPath: string[]
-}
 
 type Dispatcher = (eventName: string, payload: any) => void
 
@@ -79,8 +69,7 @@ const isVirtualBoxSchema = (schema: ISchema) => {
   return isVirtualBox(schema.type) || isVirtualBox(schema['x-component'])
 }
 
-const schemaTraverse = (schema: ISchema, callback: traverseCallback,
-  path: IPath = [], schemaPath = []) => {
+const schemaTraverse = (schema: Schema, callback: any, path: ArrayPath = [], schemaPath = []) => {
   if (schema) {
     if (isVirtualBoxSchema(schema)) {
       path = path.slice(0, path.length - 1)
@@ -117,7 +106,7 @@ const schemaTraverse = (schema: ISchema, callback: traverseCallback,
 export const caculateSchemaInitialValues = (
   schema: ISchema,
   initialValues: any,
-  callback: (pathInfo: IPathInfo, schema: ISchema, value: any) => void
+  callback: (pathInfo: any, schema: ISchema, value: any) => void
 ) => {
   initialValues = initialValues || schema.default || {}
   schemaTraverse(schema, (subSchema, $path, parentPath) => {
@@ -127,6 +116,7 @@ export const caculateSchemaInitialValues = (
         $path(index)
       })
     } else if ($path) {
+
       const isVirtualBoxInstance = isVirtualBoxSchema(subSchema)
       const name = isVirtualBoxInstance
         ? $path.schemaPath.join('.')

@@ -1,18 +1,18 @@
 import { each } from './array'
-import { isFn } from './types'
+import { isFn } from '@uform/types'
 
-type Subscriber = (notification: any) => void
+type Subscriber<N> = (notification: N) => void
 
-type Filter = (payload: any, subscription: any) => any
+type Filter<P, S> = (payload: P, subscription: S) => any
 
 const noop = () => undefined
 
-export class Broadcast {
+export class Broadcast<P, S, N> {
   private entries = []
   private buffer = []
   private length: number
 
-  public subscribe(subscriber: Subscriber, subscription: any) {
+  public subscribe(subscriber: Subscriber<N>, subscription: any) {
     if (!isFn(subscriber)) {
       return noop
     }
@@ -35,7 +35,7 @@ export class Broadcast {
   public flushBuffer({ subscriber, subscription }) {
     each(this.buffer, ({ payload, filter }) => {
       if (isFn(filter)) {
-        let notification: any
+        let notification: N
         if (filter(payload, subscription)) {
           notification = filter(payload, subscription)
           subscriber(notification)
@@ -46,14 +46,14 @@ export class Broadcast {
     })
   }
 
-  public notify(payload: any, filter: Filter) {
+  public notify(payload: P, filter: Filter<P, S>) {
     if (this.length === 0) {
       this.buffer.push({ payload, filter })
       return
     }
     each(this.entries, ({ subscriber, subscription }) => {
       if (isFn(filter)) {
-        let notification: any
+        let notification: N
         if (filter(payload, subscription)) {
           notification = filter(payload, subscription)
           subscriber(notification)
