@@ -61,7 +61,7 @@ https://codesandbox.io/s/245o92lnzy
 ## LICENSE
 
 UForm is open source software licensed as
-[MIT](https://github.com/alibaba/uform/blob/master/LICENSE.md) .
+[MIT](https://github.com/alibaba/uform/blob/master/LICENSE.md).
 
 ## Contributors
 
