@@ -11,8 +11,6 @@ interface ITokenizerHandlers {
   destructKey(str: string, isColon?: boolean): void
 }
 
-export type Path = string[] | number[] | string | number | null
-
 type Destruct = {
   [key: string]: string
 } | Path

@@ -5,8 +5,6 @@ import { isEmpty } from './isEmpty'
 const numberRE = /^\d+$/
 const VIRTUAL_BOXES = {}
 
-type Dispatcher = (eventName: string, payload: any) => void
-
 interface IRuleDescription {
   required?: boolean
   message?: string,
@@ -14,29 +12,15 @@ interface IRuleDescription {
   validator?: RuleHandler
 }
 
-type RuleHandler = (value: any, rule: IRuleDescription, values: object, name: string) => string | null
-
-export interface ISchema {
-  type?: string
-  title?: string
-  description?: string
-  default?: any
-  required?: boolean
-  enum?: Array<{ label: string, value: any } | string | number>
-  properties?: {
-    [key: string]: ISchema
-  }
-  items?: ISchema
-  minItems?: number
-  maxItems?: number
-  ['x-props']: object
-  ['x-index']: number
-  ['x-rules']: RuleHandler | Array<RuleHandler | IRuleDescription | string> | string | IRuleDescription
-  ['x-component']: string
-  ['x-effect']: (dispatch: Dispatcher) => { [key: string]: any }
+interface PathInfo {
+  name: string
+  path: string[]
+  schemaPath: string[]
 }
 
-export const getSchemaNodeFromPath = (schema: ISchema, path: Path) => {
+type RuleHandler = (value: any, rule: IRuleDescription, values: object, name: string) => string | null
+
+export const getSchemaNodeFromPath = (schema: Schema, path: Path) => {
   let res = schema
   let suc = 0
   path = toArr(path)
@@ -53,7 +37,7 @@ export const getSchemaNodeFromPath = (schema: ISchema, path: Path) => {
   return suc === path.length ? res : undefined
 }
 
-export const schemaIs = (schema: ISchema, type: string) => {
+export const schemaIs = (schema: Schema, type: string) => {
   return schema && schema.type === type
 }
 
@@ -65,7 +49,7 @@ export const registerVirtualboxFlag = (name: string) => {
   VIRTUAL_BOXES[name] = true
 }
 
-const isVirtualBoxSchema = (schema: ISchema) => {
+const isVirtualBoxSchema = (schema: Schema) => {
   return isVirtualBox(schema.type) || isVirtualBox(schema['x-component'])
 }
 
@@ -80,20 +64,21 @@ const schemaTraverse = (schema: Schema, callback: any, path: ArrayPath = [], sch
         schemaTraverse(
           subSchema,
           callback,
-          path.concat(key as string),
+          path.concat(key),
           schemaPath.concat(key)
         )
       })
     } else if (schemaIs(schema, 'array') || schema.items) {
       if (schema.items) {
+
         callback(
           schema.items,
-          (index: number | string) => {
+          (key) => {
             schemaTraverse(
               schema.items,
               callback,
-              path.concat(index),
-              schemaPath.concat(index)
+              path.concat(key),
+              schemaPath.concat(key)
             )
           },
           path
@@ -104,9 +89,9 @@ const schemaTraverse = (schema: Schema, callback: any, path: ArrayPath = [], sch
 }
 
 export const caculateSchemaInitialValues = (
-  schema: ISchema,
+  schema: Schema,
   initialValues: any,
-  callback: (pathInfo: any, schema: ISchema, value: any) => void
+  callback: (pathInfo: PathInfo, schema: Schema, value: any) => void
 ) => {
   initialValues = initialValues || schema.default || {}
   schemaTraverse(schema, (subSchema, $path, parentPath) => {
@@ -122,7 +107,7 @@ export const caculateSchemaInitialValues = (
         ? $path.schemaPath.join('.')
         : $path.path.join('.')
       const path = isVirtualBoxInstance ? $path.schemaPath : $path.path
-      const schemaPath = $path.schesmaPath
+      const schemaPath = $path.schemaPath
       const initialValue = getIn(initialValues, name)
       const value = !isEmpty(initialValue) ? initialValue : defaultValue
       if (!isEmpty(value)) {
