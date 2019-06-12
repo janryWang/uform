@@ -1,10 +1,11 @@
 import React from 'react'
+import { FieldProps } from '../type'
 import { registerFieldRenderer } from '../shared/core'
 import { isFn } from '../utils'
 
 export default () =>
   registerFieldRenderer(
-    class extends React.Component {
+    class extends React.Component<FieldProps> {
       static displayName = 'FieldXRenderer'
       render() {
         if (isFn(this.props.schema['x-render'])) {
