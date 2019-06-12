@@ -17,7 +17,7 @@ const StateField = createHOC((options, Field) => {
 
     constructor(props) {
       super(props)
-      this.initialized = true
+      this.initialized = false
       this.state = {}
       this.field = props.form.registerField(props.name || props.schemaPath.join('.'), {
         path: props.schemaPath,
@@ -25,6 +25,7 @@ const StateField = createHOC((options, Field) => {
         props: props.schema
       })
       this.mutators = createMutators(props)
+      this.initialized = true
     }
 
     onChangeHandler() {

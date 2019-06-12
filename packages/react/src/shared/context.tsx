@@ -10,6 +10,6 @@ export interface IStateContext {
   broadcast: IBroadcast
 }
 
-export const MarkupContext = React.createContext<Partial<ISchema>>({})
-export const StateContext = React.createContext<Partial<IStateContext>>({})
-export const BroadcastContext = React.createContext<Partial<IBroadcast>>({})
+export const MarkupContext = React.createContext<Partial<ISchema>>(null)
+export const StateContext = React.createContext<Partial<IStateContext>>(null)
+export const BroadcastContext = React.createContext<Partial<IBroadcast>>(null)

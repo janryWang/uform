@@ -30,7 +30,7 @@ export interface StateFieldProps {
   getSchema: Function
   form: Form
   // TODO mutators 文件应该暴露出来 interface
-  mutators: any
+  mutators?: any
 }
 
 export interface StateFieldState {
