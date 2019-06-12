@@ -1,15 +1,23 @@
 import React from 'react'
 import { isFn, getIn, camelCase, isEqual } from '../utils'
+import { FieldProps } from '../type'
 
-export const createArrayField = options => {
-  const {
-    TextButton,
-    CircleButton,
-    AddIcon,
-    RemoveIcon,
-    MoveDownIcon,
-    MoveUpIcon
-  } = {
+export interface CircleButtonProps {
+  onClick: React.MouseEvent
+  hasText: boolean
+}
+
+export interface ArrayFieldOptions {
+  TextButton: React.ComponentType
+  CircleButton: React.ComponentType<CircleButtonProps>
+  AddIcon: React.ComponentType
+  RemoveIcon: React.ComponentType
+  MoveDownIcon: React.ComponentType
+  MoveUpIcon: React.ComponentType
+}
+
+export const createArrayField = (options: ArrayFieldOptions) => {
+  const { TextButton, CircleButton, AddIcon, RemoveIcon, MoveDownIcon, MoveUpIcon } = {
     TextButton: () => <div>You Should Pass The TextButton.</div>,
     CircleButton: () => <div>You Should Pass The CircleButton.</div>,
     AddIcon: () => <div>You Should Pass The AddIcon.</div>,
@@ -19,9 +27,9 @@ export const createArrayField = options => {
     ...options
   }
 
-  return class ArrayField extends React.Component {
-    isActive = (key, value) => {
-      const readOnly = this.getProps('readOnly')
+  return class ArrayField extends React.Component<FieldProps> {
+    isActive = (key: string, value: any): boolean => {
+      const readOnly: boolean | ((key: string, value: any) => boolean) = this.getProps('readOnly')
       const disabled = this.getDisabled()
       if (isFn(disabled)) {
         return disabled(key, value)
@@ -32,7 +40,7 @@ export const createArrayField = options => {
       }
     }
 
-    getApi(index) {
+    getApi(index: number) {
       const { value } = this.props
       return {
         index,
@@ -42,25 +50,19 @@ export const createArrayField = options => {
         add: this.onAddHandler(),
         remove: this.onRemoveHandler(index),
         moveDown: e => {
-          return this.onMoveHandler(
-            index,
-            index + 1 > value.length - 1 ? 0 : index + 1
-          )(e)
+          return this.onMoveHandler(index, index + 1 > value.length - 1 ? 0 : index + 1)(e)
         },
         moveUp: e => {
-          return this.onMoveHandler(
-            index,
-            index - 1 < 0 ? value.length - 1 : index - 1
-          )(e)
+          return this.onMoveHandler(index, index - 1 < 0 ? value.length - 1 : index - 1)(e)
         }
       }
     }
 
-    getProps(path) {
+    getProps(path: string) {
       return getIn(this.props.schema, `x-props${path ? '.' + path : ''}`)
     }
 
-    renderWith(name, index, defaultRender) {
+    renderWith(name: string, index, defaultRender?) {
       const render = this.getProps(camelCase(`render-${name}`))
       if (isFn(index)) {
         defaultRender = index
@@ -69,9 +71,7 @@ export const createArrayField = options => {
       if (isFn(render)) {
         return render(this.getApi(index))
       } else if (defaultRender) {
-        return isFn(defaultRender)
-          ? defaultRender(this.getApi(index), render)
-          : defaultRender
+        return isFn(defaultRender) ? defaultRender(this.getApi(index), render) : defaultRender
       }
     }
 
@@ -80,20 +80,26 @@ export const createArrayField = options => {
       const { value } = this.props
       return (
         this.isActive('addition', value) &&
-        this.renderWith('addition', ({ add }, text) => {
-          return (
-            <div className='array-item-addition' onClick={add}>
-              <TextButton>
-                <AddIcon />
-                {text || locale.addItem || '添加'}
-              </TextButton>
-            </div>
-          )
-        })
+        this.renderWith(
+          'addition',
+          (
+            { add }: { add?: (event: React.MouseEvent<HTMLDivElement>) => void } = {},
+            text: string
+          ) => {
+            return (
+              <div className='array-item-addition' onClick={add}>
+                <TextButton>
+                  <AddIcon />
+                  {text || locale.addItem || '添加'}
+                </TextButton>
+              </div>
+            )
+          }
+        )
       )
     }
 
-    renderEmpty(disabled) {
+    renderEmpty() {
       const { locale, value } = this.props
       return (
         value.length === 0 &&
@@ -122,7 +128,7 @@ export const createArrayField = options => {
       )
     }
 
-    renderRemove(index, item) {
+    renderRemove(index: number, item: any) {
       return (
         this.isActive(`${index}.remove`, item) &&
         this.renderWith('remove', index, ({ remove }, text) => {
@@ -136,7 +142,7 @@ export const createArrayField = options => {
       )
     }
 
-    renderMoveDown(index, item) {
+    renderMoveDown(index: number, item: any) {
       const { value } = this.props
       return (
         value.length > 1 &&
@@ -152,7 +158,7 @@ export const createArrayField = options => {
       )
     }
 
-    renderMoveUp(index, item) {
+    renderMoveUp(index: number) {
       const { value } = this.props
       return (
         value.length > 1 &&
@@ -168,11 +174,11 @@ export const createArrayField = options => {
       )
     }
 
-    renderExtraOperations(index) {
+    renderExtraOperations(index: number) {
       return this.renderWith('extraOperations', index)
     }
 
-    getDisabled() {
+    getDisabled(): boolean | ((key: string, value: any) => boolean) {
       const { editable, name } = this.props
       const disabled = this.getProps('disabled')
       if (editable !== undefined) {
@@ -187,7 +193,7 @@ export const createArrayField = options => {
       return disabled
     }
 
-    onRemoveHandler(index) {
+    onRemoveHandler(index: number): Function {
       const { value, mutators, schema, locale } = this.props
       const { minItems } = schema
       return e => {
@@ -200,7 +206,7 @@ export const createArrayField = options => {
       }
     }
 
-    onMoveHandler(_from, to) {
+    onMoveHandler(_from: number, to: number): Function {
       const { mutators } = this.props
       return e => {
         e.stopPropagation()

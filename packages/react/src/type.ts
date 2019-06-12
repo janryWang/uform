@@ -26,7 +26,7 @@ export interface StateFieldProps {
   schema: ISchema
   path: string[]
   schemaPath: any
-  locale: Object
+  locale: { [key: string]: any }
   getSchema: Function
   form: Form
   // TODO mutators 文件应该暴露出来 interface
