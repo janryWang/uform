@@ -2,15 +2,23 @@ import { IFormOptions, IFormPayload, ISchema, IField } from '@uform/types'
 import { Form } from '@uform/core'
 import { IBroadcast } from '@uform/utils'
 
+export interface IEvent extends React.SyntheticEvent {}
+
+export interface EventTargetOption {
+  selected: boolean
+  value: any
+}
+
 export interface IEnhanceSchema extends ISchema {
   renderChildren?: Function
 }
 
-export interface FieldProps extends IField, StateFieldProps {
+export interface FieldProps extends Omit<IField, 'editable'>, StateFieldProps {
   children?: React.ReactNode
   schema: IEnhanceSchema
   getOrderProperties: Function
   renderField: Function
+  editable: boolean | ((name: string) => boolean)
 }
 
 export interface StateFieldProps {
@@ -21,6 +29,8 @@ export interface StateFieldProps {
   locale: Object
   getSchema: Function
   form: Form
+  // TODO mutators 文件应该暴露出来 interface
+  mutators: any
 }
 
 export interface StateFieldState {

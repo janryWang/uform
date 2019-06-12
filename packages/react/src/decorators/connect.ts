@@ -1,6 +1,9 @@
 import React, { PureComponent } from 'react'
+import { ISchema, Dispatcher } from '@uform/types'
 import { isArr, isFn, each } from '../utils'
-const isEvent = candidate =>
+import { IEvent, EventTargetOption, FieldProps } from '../type'
+
+const isEvent = (candidate: IEvent): boolean =>
   !!(candidate && candidate.stopPropagation && candidate.preventDefault)
 
 const isReactNative =
@@ -9,7 +12,7 @@ const isReactNative =
   window.navigator.product &&
   window.navigator.product === 'ReactNative'
 
-const getSelectedValues = options => {
+const getSelectedValues = (options?: EventTargetOption[]) => {
   const result = []
   if (options) {
     for (let index = 0; index < options.length; index++) {
@@ -22,29 +25,30 @@ const getSelectedValues = options => {
   return result
 }
 
-const getValue = (event, isReactNative) => {
+// TODO 需要 any ?
+const getValue = (event: IEvent | any, isReactNative: boolean) => {
   if (isEvent(event)) {
-    if (
-      !isReactNative &&
-      event.nativeEvent &&
-      event.nativeEvent.text !== undefined
-    ) {
+    if (!isReactNative && event.nativeEvent && event.nativeEvent.text !== undefined) {
       return event.nativeEvent.text
     }
     if (isReactNative && event.nativeEvent !== undefined) {
       return event.nativeEvent.text
     }
+
     const detypedEvent = event
     const {
       target: { type, value, checked, files },
       dataTransfer
     } = detypedEvent
+
     if (type === 'checkbox') {
       return !!checked
     }
+
     if (type === 'file') {
       return files || (dataTransfer && dataTransfer.files)
     }
+
     if (type === 'select-multiple') {
       return getSelectedValues(event.target.options)
     }
@@ -53,7 +57,7 @@ const getValue = (event, isReactNative) => {
   return event
 }
 
-const createEnum = (_enum, enumNames) => {
+const createEnum = (_enum: any, enumNames: string | any[]) => {
   if (isArr(_enum)) {
     return _enum.map((item, index) => {
       if (typeof item === 'object') {
@@ -73,7 +77,7 @@ const createEnum = (_enum, enumNames) => {
   return []
 }
 
-const bindEffects = (props, effect, dispatch) => {
+const bindEffects = (props: ConnectProps, effect: ISchema['x-effect'], dispatch: Dispatcher) => {
   each(effect(dispatch, { ...props }), (event, key) => {
     const prevEvent = key === 'onChange' ? props[key] : undefined
     props[key] = (...args) => {
@@ -84,15 +88,31 @@ const bindEffects = (props, effect, dispatch) => {
   return props
 }
 
-export const connect = opts => Target => {
+export interface ConnectProps extends FieldProps {
+  disabled?: boolean
+  readOnly?: boolean
+  dataSource?: any[]
+}
+
+export interface ConnectOptions {
+  valueName: string
+  eventName: string
+  defaultProps: Object
+  getValueFromEvent: Function
+  getProps: (props: ConnectProps, componentProps: FieldProps) => ConnectProps
+  getComponent: Function
+}
+
+export const connect = (opts: ConnectOptions) => Target => {
   opts = {
     valueName: 'value',
     eventName: 'onChange',
     ...opts
   }
-  return class extends PureComponent {
+  return class extends PureComponent<FieldProps> {
     render() {
       const { value, name, mutators, schema, editable } = this.props
+
       let props = {
         ...opts.defaultProps,
         ...schema['x-props'],
@@ -100,15 +120,11 @@ export const connect = opts => Target => {
         [opts.eventName]: (event, ...args) => {
           mutators.change(
             opts.getValueFromEvent
-              ? opts.getValueFromEvent.call(
-                { props: schema['x-props'] || {} },
-                event,
-                ...args
-              )
+              ? opts.getValueFromEvent.call({ props: schema['x-props'] || {} }, event, ...args)
               : getValue(event, isReactNative)
           )
         }
-      }
+      } as ConnectProps
 
       if (editable !== undefined) {
         if (isFn(editable)) {
@@ -142,9 +158,7 @@ export const connect = opts => Target => {
       }
 
       return React.createElement(
-        isFn(opts.getComponent)
-          ? opts.getComponent(Target, props, this.props)
-          : Target,
+        isFn(opts.getComponent) ? opts.getComponent(Target, props, this.props) : Target,
         props
       )
     }
