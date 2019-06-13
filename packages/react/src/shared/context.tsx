@@ -4,9 +4,9 @@ import { ISchema } from '@uform/types'
 import { IBroadcast } from '@uform/utils'
 
 export interface IStateContext {
-  getSchema: Function
+  getSchema: (path: string) => ISchema
   form: Form
-  locale: Object
+  locale: { [key: string]: any }
   broadcast: IBroadcast
 }
 

@@ -1,22 +1,22 @@
 import React from 'react'
 import { isFn, getIn, camelCase, isEqual } from '../utils'
-import { FieldProps } from '../type'
+import { IFieldProps } from '../type'
 
-export interface CircleButtonProps {
+export interface ICircleButtonProps {
   onClick: React.MouseEvent
   hasText: boolean
 }
 
-export interface ArrayFieldOptions {
+export interface IArrayFieldOptions {
   TextButton: React.ComponentType
-  CircleButton: React.ComponentType<CircleButtonProps>
+  CircleButton: React.ComponentType<ICircleButtonProps>
   AddIcon: React.ComponentType
   RemoveIcon: React.ComponentType
   MoveDownIcon: React.ComponentType
   MoveUpIcon: React.ComponentType
 }
 
-export const createArrayField = (options: ArrayFieldOptions) => {
+export const createArrayField = (options: IArrayFieldOptions) => {
   const { TextButton, CircleButton, AddIcon, RemoveIcon, MoveDownIcon, MoveUpIcon } = {
     TextButton: () => <div>You Should Pass The TextButton.</div>,
     CircleButton: () => <div>You Should Pass The CircleButton.</div>,
@@ -27,8 +27,8 @@ export const createArrayField = (options: ArrayFieldOptions) => {
     ...options
   }
 
-  return class ArrayField extends React.Component<FieldProps> {
-    isActive = (key: string, value: any): boolean => {
+  return class ArrayField extends React.Component<IFieldProps> {
+    public isActive = (key: string, value: any): boolean => {
       const readOnly: boolean | ((key: string, value: any) => boolean) = this.getProps('readOnly')
       const disabled = this.getDisabled()
       if (isFn(disabled)) {
@@ -40,7 +40,7 @@ export const createArrayField = (options: ArrayFieldOptions) => {
       }
     }
 
-    getApi(index: number) {
+    public getApi(index: number) {
       const { value } = this.props
       return {
         index,
@@ -58,11 +58,11 @@ export const createArrayField = (options: ArrayFieldOptions) => {
       }
     }
 
-    getProps(path: string) {
+    public getProps(path: string) {
       return getIn(this.props.schema, `x-props${path ? '.' + path : ''}`)
     }
 
-    renderWith(name: string, index, defaultRender?) {
+    public renderWith(name: string, index, defaultRender?) {
       const render = this.getProps(camelCase(`render-${name}`))
       if (isFn(index)) {
         defaultRender = index
@@ -75,7 +75,7 @@ export const createArrayField = (options: ArrayFieldOptions) => {
       }
     }
 
-    renderAddition() {
+    public renderAddition() {
       const { locale } = this.props
       const { value } = this.props
       return (
@@ -87,7 +87,7 @@ export const createArrayField = (options: ArrayFieldOptions) => {
             text: string
           ) => {
             return (
-              <div className='array-item-addition' onClick={add}>
+              <div className="array-item-addition" onClick={add}>
                 <TextButton>
                   <AddIcon />
                   {text || locale.addItem || '添加'}
@@ -99,7 +99,7 @@ export const createArrayField = (options: ArrayFieldOptions) => {
       )
     }
 
-    renderEmpty() {
+    public renderEmpty() {
       const { locale, value } = this.props
       return (
         value.length === 0 &&
@@ -110,10 +110,10 @@ export const createArrayField = (options: ArrayFieldOptions) => {
               className={`array-empty-wrapper ${!active ? 'disabled' : ''}`}
               onClick={active ? add : undefined}
             >
-              <div className='array-empty'>
+              <div className="array-empty">
                 <img
                   style={{ backgroundColor: 'transparent' }}
-                  src='//img.alicdn.com/tfs/TB1cVncKAzoK1RjSZFlXXai4VXa-184-152.svg'
+                  src="//img.alicdn.com/tfs/TB1cVncKAzoK1RjSZFlXXai4VXa-184-152.svg"
                 />
                 {active && (
                   <TextButton>
@@ -128,21 +128,21 @@ export const createArrayField = (options: ArrayFieldOptions) => {
       )
     }
 
-    renderRemove(index: number, item: any) {
+    public renderRemove(index: number, item: any) {
       return (
         this.isActive(`${index}.remove`, item) &&
         this.renderWith('remove', index, ({ remove }, text) => {
           return (
             <CircleButton onClick={remove} hasText={!!text}>
               <RemoveIcon />
-              {text && <span className='op-name'>{text}</span>}
+              {text && <span className="op-name">{text}</span>}
             </CircleButton>
           )
         })
       )
     }
 
-    renderMoveDown(index: number, item: any) {
+    public renderMoveDown(index: number, item: any) {
       const { value } = this.props
       return (
         value.length > 1 &&
@@ -151,14 +151,14 @@ export const createArrayField = (options: ArrayFieldOptions) => {
           return (
             <CircleButton onClick={moveDown} hasText={!!text}>
               <MoveDownIcon />
-              <span className='op-name'>{text}</span>
+              <span className="op-name">{text}</span>
             </CircleButton>
           )
         })
       )
     }
 
-    renderMoveUp(index: number) {
+    public renderMoveUp(index: number) {
       const { value } = this.props
       return (
         value.length > 1 &&
@@ -167,18 +167,18 @@ export const createArrayField = (options: ArrayFieldOptions) => {
           return (
             <CircleButton onClick={moveUp} hasText={!!text}>
               <MoveUpIcon />
-              <span className='op-name'>{text}</span>
+              <span className="op-name">{text}</span>
             </CircleButton>
           )
         })
       )
     }
 
-    renderExtraOperations(index: number) {
+    public renderExtraOperations(index: number) {
       return this.renderWith('extraOperations', index)
     }
 
-    getDisabled(): boolean | ((key: string, value: any) => boolean) {
+    public getDisabled(): boolean | ((key: string, value: any) => boolean) {
       const { editable, name } = this.props
       const disabled = this.getProps('disabled')
       if (editable !== undefined) {
@@ -193,7 +193,8 @@ export const createArrayField = (options: ArrayFieldOptions) => {
       return disabled
     }
 
-    onRemoveHandler(index: number): Function {
+    // TODO e 类型
+    public onRemoveHandler(index: number): ((e: any) => void) {
       const { value, mutators, schema, locale } = this.props
       const { minItems } = schema
       return e => {
@@ -206,15 +207,15 @@ export const createArrayField = (options: ArrayFieldOptions) => {
       }
     }
 
-    onMoveHandler(_from: number, to: number): Function {
+    public onMoveHandler(from: number, to: number): ((e: any) => void) {
       const { mutators } = this.props
       return e => {
         e.stopPropagation()
-        mutators.move(_from, to)
+        mutators.move(from, to)
       }
     }
 
-    onAddHandler() {
+    public onAddHandler() {
       const { value, mutators, schema, locale } = this.props
       const { maxItems } = schema
       return e => {
@@ -227,7 +228,7 @@ export const createArrayField = (options: ArrayFieldOptions) => {
       }
     }
 
-    onClearErrorHandler() {
+    public onClearErrorHandler() {
       return () => {
         const { value, mutators, schema } = this.props
         const { maxItems, minItems } = schema
@@ -240,7 +241,7 @@ export const createArrayField = (options: ArrayFieldOptions) => {
       }
     }
 
-    validate() {
+    public validate() {
       const { value, mutators, schema, locale } = this.props
       const { maxItems, minItems } = schema
       if (value.length > maxItems) {
@@ -252,13 +253,13 @@ export const createArrayField = (options: ArrayFieldOptions) => {
       }
     }
 
-    componentDidUpdate(prevProps) {
+    public componentDidUpdate(prevProps) {
       if (!isEqual(prevProps.value, this.props.value)) {
         this.validate()
       }
     }
 
-    componentDidMount() {
+    public componentDidMount() {
       this.validate()
     }
   }

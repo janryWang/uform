@@ -1,9 +1,9 @@
 import React, { PureComponent } from 'react'
 import { ISchema, Dispatcher } from '@uform/types'
 import { isArr, isFn, each } from '../utils'
-import { IEvent, EventTargetOption, FieldProps } from '../type'
+import { IEventTargetOption, IFieldProps } from '../type'
 
-const isEvent = (candidate: IEvent): boolean =>
+const isEvent = (candidate: React.SyntheticEvent): boolean =>
   !!(candidate && candidate.stopPropagation && candidate.preventDefault)
 
 const isReactNative =
@@ -12,7 +12,7 @@ const isReactNative =
   window.navigator.product &&
   window.navigator.product === 'ReactNative'
 
-const getSelectedValues = (options?: EventTargetOption[]) => {
+const getSelectedValues = (options?: IEventTargetOption[]) => {
   const result = []
   if (options) {
     for (let index = 0; index < options.length; index++) {
@@ -26,7 +26,7 @@ const getSelectedValues = (options?: EventTargetOption[]) => {
 }
 
 // TODO 需要 any ?
-const getValue = (event: IEvent | any, isReactNative: boolean) => {
+const getValue = (event: React.SyntheticEvent | any, isReactNative: boolean) => {
   if (isEvent(event)) {
     if (!isReactNative && event.nativeEvent && event.nativeEvent.text !== undefined) {
       return event.nativeEvent.text
@@ -57,9 +57,9 @@ const getValue = (event: IEvent | any, isReactNative: boolean) => {
   return event
 }
 
-const createEnum = (_enum: any, enumNames: string | any[]) => {
-  if (isArr(_enum)) {
-    return _enum.map((item, index) => {
+const createEnum = (enums: any, enumNames: string | any[]) => {
+  if (isArr(enums)) {
+    return enums.map((item, index) => {
       if (typeof item === 'object') {
         return {
           ...item
@@ -77,40 +77,44 @@ const createEnum = (_enum: any, enumNames: string | any[]) => {
   return []
 }
 
-const bindEffects = (props: ConnectProps, effect: ISchema['x-effect'], dispatch: Dispatcher) => {
+const bindEffects = (props: IConnectProps, effect: ISchema['x-effect'], dispatch: Dispatcher) => {
   each(effect(dispatch, { ...props }), (event, key) => {
     const prevEvent = key === 'onChange' ? props[key] : undefined
     props[key] = (...args) => {
-      if (isFn(prevEvent)) prevEvent(...args)
-      if (isFn(event)) return event(...args)
+      if (isFn(prevEvent)) {
+        prevEvent(...args)
+      }
+      if (isFn(event)) {
+        return event(...args)
+      }
     }
   })
   return props
 }
 
-export interface ConnectProps extends FieldProps {
+export interface IConnectProps extends IFieldProps {
   disabled?: boolean
   readOnly?: boolean
   dataSource?: any[]
 }
 
-export interface ConnectOptions {
+export interface IConnectOptions {
   valueName: string
   eventName: string
-  defaultProps: Object
-  getValueFromEvent: Function
-  getProps: (props: ConnectProps, componentProps: FieldProps) => ConnectProps
-  getComponent: Function
+  defaultProps: object
+  getValueFromEvent: () => void
+  getProps: (props: IConnectProps, componentProps: IFieldProps) => IConnectProps
+  getComponent: () => void
 }
 
-export const connect = (opts: ConnectOptions) => Target => {
+export const connect = (opts: IConnectOptions) => Target => {
   opts = {
     valueName: 'value',
     eventName: 'onChange',
     ...opts
   }
-  return class extends PureComponent<FieldProps> {
-    render() {
+  return class extends PureComponent<IFieldProps> {
+    public render() {
       const { value, name, mutators, schema, editable } = this.props
 
       let props = {
@@ -124,7 +128,7 @@ export const connect = (opts: ConnectOptions) => Target => {
               : getValue(event, isReactNative)
           )
         }
-      } as ConnectProps
+      } as IConnectProps
 
       if (editable !== undefined) {
         if (isFn(editable)) {
@@ -143,14 +147,14 @@ export const connect = (opts: ConnectOptions) => Target => {
       }
 
       if (isFn(opts.getProps)) {
-        let newProps = opts.getProps(props, this.props)
+        const newProps = opts.getProps(props, this.props)
         if (newProps !== undefined) {
           props = newProps
         }
       }
 
-      if (isArr(schema['enum']) && !props.dataSource) {
-        props.dataSource = createEnum(schema['enum'], schema['enumNames'])
+      if (isArr(schema.enum) && !props.dataSource) {
+        props.dataSource = createEnum(schema.enum, schema.enumNames)
       }
 
       if (props.editable !== undefined) {
