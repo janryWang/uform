@@ -298,7 +298,7 @@ export interface IForm {
     path: FormPathPattern,
     callback?: (state: IFieldState) => any
   ): any
-  transformDataPath(path: FormPathPattern): FormPathPattern
+  unsafe_do_not_use_transform_data_path(path: FormPathPattern): FormPathPattern
   registerField(props: IFieldStateProps): IField
   registerVirtualField(props: IVirtualFieldStateProps): IVirtualField
   createMutators(path: FormPathPattern): IMutators

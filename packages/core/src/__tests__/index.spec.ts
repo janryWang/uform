@@ -382,11 +382,11 @@ describe('transformDataPath', () => {
     form.registerField({ path: 'a.b.c.d' })
     form.registerField({ path: 'a.b.c.d.e' })
 
-    expect(form.transformDataPath(new FormPath('a')).toString()).toEqual('a')
-    expect(form.transformDataPath(new FormPath('a.b')).toString()).toEqual('a.b')
-    expect(form.transformDataPath(new FormPath('a.b.c')).toString()).toEqual('a.b.c')
-    expect(form.transformDataPath(new FormPath('a.b.c.d')).toString()).toEqual('a.b.c.d')
-    expect(form.transformDataPath(new FormPath('a.b.c.d.e')).toString()).toEqual('a.b.c.d.e')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a')).toString()).toEqual('a')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a.b')).toString()).toEqual('a.b')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a.b.c')).toString()).toEqual('a.b.c')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a.b.c.d')).toString()).toEqual('a.b.c.d')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a.b.c.d.e')).toString()).toEqual('a.b.c.d.e')
   })
 
   test('virtual path', async () => {
@@ -397,11 +397,11 @@ describe('transformDataPath', () => {
     form.registerVirtualField({ path: 'a.b.c.d' })
     form.registerField({ path: 'a.b.c.d.e' })
 
-    expect(form.transformDataPath(new FormPath('a')).toString()).toEqual('a')
-    expect(form.transformDataPath(new FormPath('a.b')).toString()).toEqual('a')
-    expect(form.transformDataPath(new FormPath('a.b.c')).toString()).toEqual('a.c')
-    expect(form.transformDataPath(new FormPath('a.b.c.d')).toString()).toEqual('a.c')
-    expect(form.transformDataPath(new FormPath('a.b.c.d.e')).toString()).toEqual('a.c.e')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a')).toString()).toEqual('a')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a.b')).toString()).toEqual('a')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a.b.c')).toString()).toEqual('a.c')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a.b.c.d')).toString()).toEqual('a.c')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a.b.c.d.e')).toString()).toEqual('a.c.e')
   })
 
   test('virtual path(head)', async () => {
@@ -410,9 +410,9 @@ describe('transformDataPath', () => {
     form.registerField({ path: 'a.b' })
     form.registerField({ path: 'a.b.c' })
 
-    expect(form.transformDataPath(new FormPath('a')).toString()).toEqual('')
-    expect(form.transformDataPath(new FormPath('a.b')).toString()).toEqual('b')
-    expect(form.transformDataPath(new FormPath('a.b.c')).toString()).toEqual('b.c')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a')).toString()).toEqual('')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a.b')).toString()).toEqual('b')
+    expect(form.unsafe_do_not_use_transform_data_path(new FormPath('a.b.c')).toString()).toEqual('b.c')
   })
 })
 

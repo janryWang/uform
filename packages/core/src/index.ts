@@ -587,9 +587,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
           if (forceClear || !isValid(state.initialValue)) {
             if (isArr(state.value)) {
               state.value = []
-            } else if (isObj(state.value)) {
-              // state.value = {}
-            } else {
+            } else if (!isObj(state.value)) {
               state.value = undefined
             }
           } else {
@@ -898,7 +896,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     getFormGraph,
     setFormGraph,
     setFieldValue,
-    transformDataPath,
+    unsafe_do_not_use_transform_data_path: transformDataPath,
     setValue: deprecate(setValue, 'setValue', 'Please use the setFieldValue.'),
     getFieldValue,
     getValue: deprecate(getValue, 'getValue', 'Please use the getFieldValue.'),
