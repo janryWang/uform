@@ -351,7 +351,8 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
           } else {
             state.value = isValid(formValue) ? formValue : initialValue
           }
-          state.initialValue = initialValue || formInitialValue;
+          // initialValue > formInitialValue
+          state.initialValue = isValid(initialValue) ? initialValue : formInitialValue
 
           state.props = props
           state.required = required
@@ -393,7 +394,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
         return path
       }
       return dataPath
-    }, FormPath.getPath(''));
+    }, FormPath.getPath(''))
   }
 
   function setFormIn(
@@ -583,7 +584,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
           state.effectWarnings = []
           
           // forceClear仅对设置initialValues的情况下有意义
-          if (forceClear || state.initialValue === undefined) {
+          if (forceClear || !isValid(state.initialValue)) {
             if (isArr(state.value)) {
               state.value = []
             } else if (isObj(state.value)) {
