@@ -1,6 +1,14 @@
 import React, { useContext, Fragment } from 'react'
 import { Field, VirtualField } from '@uform/react'
-import { FormPath, isFn, lowercase, reduce, each } from '@uform/shared'
+import {
+  FormPath,
+  isFn,
+  lowercase,
+  reduce,
+  each,
+  isStr,
+  deprecate
+} from '@uform/shared'
 import pascalCase from 'pascal-case'
 import {
   ISchemaFieldProps,
@@ -9,11 +17,10 @@ import {
   IFieldStore,
   ISchemaFieldWrapper,
   ISchemaVirtualFieldComponentProps,
-  ISchemaFieldComponent,
-  ISchemaVirtualFieldComponent
+  ISchemaFieldComponent
 } from '../types'
 import { Schema } from '../shared/schema'
-import SchemaContext from '../context'
+import SchemaContext, { FormItemContext } from '../context'
 
 const store: IFieldStore = {
   fields: {},
@@ -30,6 +37,12 @@ function compose<T, P>(payload: T, args: P[], revert: boolean) {
     payload,
     revert
   )
+}
+
+export const cleanup = () => {
+  store.fields = {}
+  store.virtualFields = {}
+  store.wrappers = []
 }
 
 export function registerFormField(
@@ -68,8 +81,7 @@ export function registerFormFields(object: IFieldStore['fields']) {
 
 export function registerVirtualBox(
   name: string,
-  component: ComponentWithStyleComponent<ISchemaVirtualFieldComponentProps>,
-  noWrapper: boolean = false
+  component: ComponentWithStyleComponent<ISchemaVirtualFieldComponentProps>
 ) {
   if (
     name &&
@@ -77,15 +89,18 @@ export function registerVirtualBox(
   ) {
     name = lowercase(name)
     store.virtualFields[name] = component
-    store.virtualFields[name].__WRAPPERS__ = []
     store.virtualFields[name].displayName = pascalCase(name)
   }
 }
 
-export function registerFieldWrappers(
-  wrappers: ISchemaFieldWrapper<
-    ISchemaFieldComponentProps | ISchemaVirtualFieldComponentProps
-  >[]
+type FieldMiddleware = ISchemaFieldWrapper<ISchemaFieldComponentProps>
+
+export const registerFieldMiddleware = deprecate<
+  FieldMiddleware,
+  FieldMiddleware,
+  FieldMiddleware
+>(function registerFieldMiddleware(
+  ...wrappers: ISchemaFieldWrapper<ISchemaFieldComponentProps>[]
 ) {
   each<IFieldStore['fields'], ISchemaFieldComponent>(
     store.fields,
@@ -102,22 +117,7 @@ export function registerFieldWrappers(
       }
     }
   )
-  each<IFieldStore['virtualFields'], ISchemaVirtualFieldComponent>(
-    store.virtualFields,
-    (component, key) => {
-      if (
-        !component.__WRAPPERS__.some(wrapper => wrappers.indexOf(wrapper) > -1)
-      ) {
-        store.virtualFields[key] = compose(
-          store.virtualFields[key],
-          wrappers,
-          true
-        )
-        store.virtualFields[key].__WRAPPERS__ = wrappers
-      }
-    }
-  )
-}
+})
 
 export const SchemaField: React.FunctionComponent<ISchemaFieldProps> = (
   props: ISchemaFieldProps
@@ -125,6 +125,7 @@ export const SchemaField: React.FunctionComponent<ISchemaFieldProps> = (
   const path = FormPath.parse(props.path)
   const formSchema = useContext(SchemaContext)
   const fieldSchema = formSchema.get(path)
+  const formItemComponent = useContext(FormItemContext)
   if (!fieldSchema) {
     throw new Error(`Can not found schema node by ${path.toString()}.`)
   }
@@ -147,61 +148,106 @@ export const SchemaField: React.FunctionComponent<ISchemaFieldProps> = (
         })}
       </Fragment>
     )
-  } else if (store.fields[finalComponentName]) {
-    return (
-      <Field
-        path={path}
-        initialValue={fieldSchema.default}
-        props={fieldSchema.getSelfProps()}
-        editable={fieldSchema.getExtendsEditable()}
-        required={fieldSchema.getExtendsRequired()}
-        rules={fieldSchema.getExtendsRules()}
-      >
-        {({ state, mutators }) => {
-          const props: ISchemaFieldComponentProps = {
-            ...state,
-            schema: fieldSchema,
-            path,
-            mutators,
-            renderField
-          }
-          const renderComponent = (): React.ReactElement =>
-            React.createElement(store.fields[finalComponentName], props)
-          if (isFn(schemaRenderer)) {
-            return schemaRenderer({ ...props, renderComponent })
-          }
-          return renderComponent()
-        }}
-      </Field>
-    )
-  } else if (store.virtualFields[finalComponentName]) {
-    return (
-      <VirtualField path={path} props={fieldSchema.getSelfProps()}>
-        {({ state }) => {
-          const props: ISchemaVirtualFieldComponentProps = {
-            ...state,
-            schema: fieldSchema,
-            path,
-            renderField,
-            children: fieldSchema.mapProperties(
-              (schema: Schema, key: string) => {
-                const childPath = path.concat(key)
-                return (
-                  <SchemaField key={childPath.toString()} path={childPath} />
+  } else {
+    if (isFn(finalComponentName)) {
+      return (
+        <Field
+          path={path}
+          initialValue={fieldSchema.default}
+          props={fieldSchema.getSelfProps()}
+          editable={fieldSchema.getExtendsEditable()}
+          required={fieldSchema.getExtendsRequired()}
+          rules={fieldSchema.getExtendsRules()}
+        >
+          {({ state, mutators, form }) => {
+            const props: ISchemaFieldComponentProps = {
+              ...state,
+              schema: fieldSchema,
+              path,
+              form,
+              mutators,
+              renderField
+            }
+            return React.createElement(
+              formItemComponent,
+              props,
+              React.createElement(finalComponentName, props)
+            )
+          }}
+        </Field>
+      )
+    } else if (isStr(finalComponentName)) {
+      if (store.fields[finalComponentName]) {
+        return (
+          <Field
+            path={path}
+            initialValue={fieldSchema.default}
+            props={fieldSchema.getSelfProps()}
+            editable={fieldSchema.getExtendsEditable()}
+            required={fieldSchema.getExtendsRequired()}
+            rules={fieldSchema.getExtendsRules()}
+          >
+            {({ state, mutators, form }) => {
+              const props: ISchemaFieldComponentProps = {
+                ...state,
+                schema: fieldSchema,
+                path,
+                form,
+                mutators,
+                renderField
+              }
+              const renderComponent = (): React.ReactElement =>
+                React.createElement(
+                  formItemComponent,
+                  props,
+                  React.createElement(store.fields[finalComponentName], props)
+                )
+              if (isFn(schemaRenderer)) {
+                return schemaRenderer({ ...props, renderComponent })
+              }
+              return renderComponent()
+            }}
+          </Field>
+        )
+      } else if (store.virtualFields[finalComponentName]) {
+        return (
+          <VirtualField path={path} props={fieldSchema.getSelfProps()}>
+            {({ state, form }) => {
+              const props: ISchemaVirtualFieldComponentProps = {
+                ...state,
+                schema: fieldSchema,
+                path,
+                form,
+                renderField,
+                children: fieldSchema.mapProperties(
+                  (schema: Schema, key: string) => {
+                    const childPath = path.concat(key)
+                    return (
+                      <SchemaField
+                        key={childPath.toString()}
+                        path={childPath}
+                      />
+                    )
+                  }
                 )
               }
-            )
-          }
-          const renderComponent = () =>
-            React.createElement(store.virtualFields[finalComponentName], props)
-          if (isFn(schemaRenderer)) {
-            return schemaRenderer({ ...props, renderComponent })
-          }
-          return renderComponent()
-        }}
-      </VirtualField>
-    )
-  } else {
-    throw new Error(`Can not found any custom component in ${path.toString()}.`)
+              const renderComponent = () =>
+                React.createElement(
+                  store.virtualFields[finalComponentName],
+                  props
+                )
+              if (isFn(schemaRenderer)) {
+                return schemaRenderer({ ...props, renderComponent })
+              }
+              return renderComponent()
+            }}
+          </VirtualField>
+        )
+      } else {
+        throw new Error(
+          `Can not found any custom component in ${path.toString()}.`
+        )
+      }
+    }
   }
 }

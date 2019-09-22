@@ -27,6 +27,7 @@ export interface IFormProps {
   initialValues?: {}
   actions?: {}
   effects?: IFormEffect
+  form?: IForm
   onChange?: (values: any) => void
   onSubmit?: (values: any) => void | Promise<any>
   onReset?: () => void
@@ -39,12 +40,14 @@ export interface IFormProps {
 
 export interface IFieldAPI {
   state: IFieldState
+  form: IForm
   props: {}
   mutators: IMutators
 }
 
 export interface IVirtualFieldAPI {
   state: IFieldState
+  form: IForm
   props: {}
 }
 
@@ -82,9 +85,16 @@ export interface IFormConsumerProps {
 }
 
 export interface IFieldHook {
+  form: IForm
   state: IFieldState
   props: {}
   mutators: IMutators
+}
+
+export interface IVirtualFieldHook {
+  form: IForm
+  state: IFieldState
+  props: {}
 }
 
 export interface IFormActions {
