@@ -365,8 +365,9 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
         })
       })
       validator.register(path, validate => {
-        const { value, rules, editable, visible, unmounted } = field.getState()
-        if (editable === false || visible === true || unmounted === true)
+        const { value, rules, editable, visible, unmounted, display } = field.getState()
+        // 不需要校验的情况有: 非编辑态(editable)，已销毁(unmounted), 视觉/逻辑上不可见(visible/display)
+        if (editable === false || visible === false || display === false || unmounted === true)
           return validate(value, [])
         clearTimeout((field as any).validateTimer)
         ;(field as any).validateTimer = setTimeout(() => {
@@ -622,15 +623,16 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
   }
 
   async function submit(
-    onSubmit?: (values: IFormState['values']) => void | Promise<any>
+    onSubmit?: (values: IFormState['values']) => any | Promise<any>
   ): Promise<IFormSubmitResult> {
+    // 重复提交，返回前一次的promise
+    if (state.getState(state => state.submitting)) return submittingTask
     onSubmit = onSubmit || options.onSubmit
-    if (state.getState(state => state.submitting)) return new Promise(() => {})
     state.setState(state => {
       state.submitting = true
     })
     heart.notify(LifeCycleTypes.ON_FORM_SUBMIT_START, state)
-    return validate()
+    submittingTask = validate()
       .then(validated => {
         if (isFn(onSubmit)) {
           return Promise.resolve(
@@ -655,6 +657,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
         }
         return response
       })
+    return submittingTask
   }
 
   function mergeMessages(
@@ -940,6 +943,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
   state.setState((state: IFormState) => {
     state.initialized = true
   })
+  let submittingTask
   return formApi
 }
 

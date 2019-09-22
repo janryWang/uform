@@ -8,7 +8,7 @@ const resetInitValues = {
   aa: {
     bb: [{ aa: 123 }, { aa: 321 }]
   }
-};
+}
 
 
 describe('createForm', () => {
@@ -135,7 +135,93 @@ describe('graph', () => {
 })
 
 describe('submit', () => {
-  //todo
+  test('onSubmit', async() => {
+    const onSubmitContructor = jest.fn()
+    const onSubmitFn = jest.fn()
+    const changeSubmitPayload = (values) => ({ hello: 'world' })
+    const form1 = createForm({ onSubmit: onSubmitContructor })
+    const form2 = createForm()
+
+    expect(onSubmitContructor).toBeCalledTimes(0)
+    expect(onSubmitContructor).toBeCalledTimes(0)
+    await form1.submit()
+    await form2.submit()
+    expect(onSubmitContructor).toBeCalledTimes(1)
+    expect(onSubmitFn).toBeCalledTimes(0)
+
+    // priority: onSubmitFn > onSubmitContructor
+    await form1.submit(onSubmitFn)
+    await form2.submit(onSubmitFn)
+    expect(onSubmitContructor).toBeCalledTimes(1)
+    expect(onSubmitFn).toBeCalledTimes(2)
+    const result = await form2.submit(changeSubmitPayload)
+    expect(result).toEqual({ validated: {
+      errors: [],
+      warnings: [],
+    }, payload: { hello: 'world'} })
+  })
+
+  test('submitResult', async () => {
+    const sunmitFailed = jest.fn()
+    const form = createForm()    
+    form.registerField({ path: 'a', rules: [(value) => {
+      return value === undefined ? { type: 'error', message: 'a is required' } : null
+    }] })
+    form.registerField({ path: 'b', rules: [(value) => {
+      return value === undefined ? { type: 'warning', message: 'b is required' } : null
+    }] })
+
+    // error failed
+    try {
+      await form.submit()
+    } catch (errors) {
+      sunmitFailed()
+      expect(errors).toEqual([{ path: 'a', messages: ['a is required']}])
+    }
+    
+    // warning pass
+    form.setFieldValue('a', 1)
+    let validated
+    try {
+      const result = await form.submit()
+      validated = result.validated
+    } catch (errors) {
+      sunmitFailed()
+    }
+
+    expect(validated.warnings).toEqual([{ path: 'b', messages: ['b is required'] }])
+    expect(validated.errors).toEqual([])
+    expect(sunmitFailed).toHaveBeenCalledTimes(1)
+  })
+
+  test('repeat submit', async () => {
+    const form = createForm()
+    const result1 = form.submit()
+    const result2 = form.submit()
+    // reuse before result
+    expect(result1).toEqual(result2)
+  })
+
+  test('basic', async () => {
+    const onSubmitStart = jest.fn()
+    const onSubmitEnd = jest.fn()
+    const form = createForm({
+      lifecycles: [
+        new FormLifeCycle(LifeCycleTypes.ON_FORM_SUBMIT_START, onSubmitStart),
+        new FormLifeCycle(LifeCycleTypes.ON_FORM_SUBMIT_END, onSubmitEnd),
+      ],
+      onSubmit: () => {
+        expect(form.getFormState(state => state.submitting)).toEqual(true)
+      }
+    })
+    expect(form.getFormState(state => state.submitting)).toEqual(false)
+    expect(onSubmitStart).toBeCalledTimes(0)
+    expect(onSubmitEnd).toBeCalledTimes(0)
+    await form.submit()
+    expect(form.getFormState(state => state.submitting)).toEqual(false)
+    expect(onSubmitStart).toBeCalledTimes(1)
+    expect(onSubmitEnd).toBeCalledTimes(1)
+  })
 })
 
 describe('reset', () => {
@@ -205,7 +291,24 @@ describe('reset', () => {
 })
 
 describe('validate', () => {
-  //todo
+  test('empty', async () => {
+    const form = createForm()
+    const { warnings, errors } = await form.validate()
+    expect(warnings).toEqual([])
+    expect(errors).toEqual([])
+  })
+
+  test('validate basic', async () => {
+    const form = createForm()
+    form.registerField({ path: 'a', rules: ['number'] }) // string
+    form.registerField({ path: 'b', rules: [() => ({ type: 'warning', message: 'warning msg' })] }) // CustomValidator
+    form.registerField({ path: 'c', rules: [() => ({ type: 'error', message: 'warning msg' })] }) // CustomValidator
+    form.registerField({ path: 'd', rules: [() => 'straight error msg'] }) // CustomValidator
+    form.registerField({ path: 'e', rules: [{ required: true, message: 'desc msg' }] }) // ValidateDescription
+    const { warnings, errors } = await form.validate()
+    expect(warnings.length).toEqual(1)
+    expect(errors.length).toEqual(4)
+  })
 })
 
 describe('setState', () => {
@@ -244,7 +347,11 @@ describe('registerField', () => {
   test('basic', async () => {
     const form = createForm({ values: { a: 1 } })
     form.registerField({ path: 'a' })
+    form.registerField({ path: 'b' })
     expect(form.getFieldValue('a')).toEqual(1)
+    expect(form.getFieldValue('b')).toEqual(undefined)
+    expect(form.getFieldState('a', state => state.values)).toEqual([1])
+    expect(form.getFieldState('b', state => state.values)).toEqual([undefined])
   })
 
   test('merge', async () => {
@@ -265,7 +372,22 @@ describe('registerVirtualField', () => {
 })
 
 describe('createMutators', () => {
-  const arr = ['a', 'b'];
+  const arr = ['a', 'b']
+  test('change', async () => {
+    const form = createForm()
+    form.registerField({ path: 'a' })
+    const mutators = form.createMutators('a')
+    expect(form.getFieldState('a', (state => ({ values: state.values, value: state.value })))).toEqual({
+      value: undefined,
+      values: [undefined],
+    })
+    mutators.change(1,2,3,4)
+    expect(form.getFieldState('a', (state => ({ values: state.values, value: state.value })))).toEqual({
+      value: 1,
+      values: [1,2,3,4],
+    })
+  })
+
   test('focus', async () => {
     const form = createForm()
     form.registerField({ path: 'a' })
@@ -331,7 +453,6 @@ describe('createMutators', () => {
   test('remove', async () => {
     const form = createForm()
     form.registerField({ path: 'mm', value: arr })
-    console.log('arr==>', arr);
     const mutators = form.createMutators('mm')
     expect(form.getFieldValue('mm')).toEqual(arr)
     mutators.remove(1)
