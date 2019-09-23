@@ -33,7 +33,7 @@ export class Schema implements ISchema {
   public default?: any
   public readOnly?: boolean
   public writeOnly?: boolean
-  public type?: string
+  public type?: 'string' | 'object' | 'array' | 'number' | string
   public enum?: Array<string | number | { label: SchemaMessage; value: any }>
   public const?: any
   public multipleOf?: number
@@ -78,6 +78,8 @@ export class Schema implements ISchema {
 
   public parent?: Schema
 
+  public _isJSONSchemaObject = true
+
   constructor(json: ISchema, parent?: Schema) {
     if (parent) {
       this.parent = parent
@@ -107,10 +109,13 @@ export class Schema implements ISchema {
   }
   getSelfProps() {
     const {
+      _isJSONSchemaObject,
       properties,
       additionalProperties,
       additionalItems,
+      patternProperties,
       items,
+      parent,
       ...props
     } = this
     return props
@@ -228,6 +233,7 @@ export class Schema implements ISchema {
    * getters
    */
   setProperty(key: string, schema: ISchema) {
+    this.properties = this.properties || {}
     this.properties[key] = new Schema(schema, this)
     return this.properties[key]
   }
@@ -241,13 +247,40 @@ export class Schema implements ISchema {
     this.items = new Schema(schema, this)
     return this.items
   }
-  toJSON() {}
+  toJSON() {
+    const result: ISchema = this.getSelfProps()
+    if(isValid(this.properties)){
+      result.properties = map(this.properties,(schema)=>{
+        return schema.toJSON()
+      })
+    }
+    if(isValid(this.items)){
+      result.items = isArr(this.items) ? this.items.map(schema=>schema.toJSON()) : this.items.toJSON()
+    }
+    if(isValid(this.additionalItems)){
+      result.additionalItems = this.additionalItems.toJSON()
+    }
+    if(isValid(this.additionalProperties)){
+      result.additionalProperties = this.additionalProperties.toJSON()
+    }
+    if(isValid(this.patternProperties)){
+      result.patternProperties = map(this.patternProperties,(schema)=>{
+        return schema.toJSON()
+      })
+    }
+    return result
+  }
+
   fromJSON(json: ISchema = {}) {
     if (typeof json === 'boolean') return json
     if (json instanceof Schema) return json
     Object.assign(this, json)
-    this.type = lowercase(String(json.type))
-    this['x-component'] = lowercase(json['x-component'])
+    if(isValid(json.type)){
+      this.type = lowercase(String(json.type))
+    }
+    if(isValid(json['x-component'])){
+      this['x-component'] = lowercase(json['x-component'])
+    }
     if (!isEmpty(json.properties)) {
       this.properties = map(json.properties, item => {
         return new Schema(item, this)

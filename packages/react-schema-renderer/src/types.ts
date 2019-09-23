@@ -5,7 +5,9 @@ import {
   IVirtualFieldState,
   IMutators,
   IFormProps,
-  IForm
+  IForm,
+  IFormActions,
+  IFormAsyncActions
 } from '@uform/react'
 import { ValidatePatternRules } from '@uform/validator'
 import { Schema } from './shared/schema'
@@ -77,7 +79,7 @@ export interface ISchema {
   default?: any
   readOnly?: boolean
   writeOnly?: boolean
-  type?: string
+  type?: 'string' | 'object' | 'array' | 'number' | string
   enum?: Array<string | number | { label: SchemaMessage; value: any }>
   const?: any
   multipleOf?: number
@@ -148,9 +150,19 @@ export interface IConnectOptions {
     Target: any,
     componentProps: {},
     fieldProps: ISchemaFieldComponentProps | ISchemaVirtualFieldComponentProps
-  ) => T
+  ) => React.JSXElementConstructor<any>
 }
 
 export interface IConnectProps {
   [key: string]: any
+}
+
+export interface ISchemaFormActions extends IFormActions {
+  getSchema(): Schema
+  getFormSchema(): Schema
+}
+
+export interface ISchemaFormAsyncActions extends IFormAsyncActions {
+  getSchema(): Promise<Schema>
+  getFormSchema(): Promise<Schema>
 }
