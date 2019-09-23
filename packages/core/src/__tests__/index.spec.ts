@@ -365,20 +365,6 @@ describe('validate', () => {
     expect(cResult2.warnings).toEqual([])
     expect(cResult2.errors).toEqual([])
   })
-
-  test('array path', async () => {
-    const form = createForm()
-    form.registerField({ path: 'b', rules: [(v) => v === undefined ? ({ type: 'warning', message: 'warning msg' }) : undefined] }) // CustomValidator warning
-    form.registerField({ path: 'c', rules: [(v) => v === undefined ? ({ type: 'error', message: 'error msg' }) : undefined] }) // CustomValidator error
-    const result = await form.validate(['b', 'c'])
-    expect(result.warnings).toEqual([{ path: 'b', messages: ['warning msg'] }])
-    expect(result.errors).toEqual([{ path: 'c', messages: ['error msg']}])      
-    form.setFieldValue('b', 1)
-    form.setFieldValue('c', 1)
-    const result2 = await form.validate(['b', 'c'])
-    expect(result2.warnings).toEqual([])
-    expect(result2.errors).toEqual([])
-  })
 })
 
 describe('setState', () => {

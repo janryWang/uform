@@ -684,7 +684,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
   }
 
   async function validate(
-    path?: FormPathPattern | Array<FormPathPattern>,
+    path?: FormPathPattern,
     opts?: {}
   ): Promise<IFormValidateResult> {
     // TODO: 全局不会引起重绘，不需要setTimeout控制频率
