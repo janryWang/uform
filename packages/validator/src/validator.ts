@@ -148,15 +148,14 @@ class FormValidator {
   }
 
   async validateNodes(
-    paths: Array<FormPath>,
+    pattern: FormPath,
     options: ValidateFieldOptions
-  ): Promise<ValidateNodeResult> {    
+  ): Promise<ValidateNodeResult> {
     const errors = []
     const warnings = []
-    let promise = Promise.resolve({ errors, warnings })    
+    let promise = Promise.resolve({ errors, warnings })
     each<ValidateNodeMap, ValidateNode>(this.nodes, (validator, path) => {
-      const needValidate = paths.some(p => p.match(path))
-      if (needValidate) {
+      if (pattern.match(path)) {
         promise = promise.then(async ({ errors, warnings }) => {
           const result = await validator(options)
           return {
@@ -186,12 +185,11 @@ class FormValidator {
   }
 
   validate = (
-    path?: FormPathPattern | Array<FormPathPattern>,
+    path?: FormPathPattern,
     options?: ValidateFieldOptions
   ): Promise<ValidateNodeResult> => {
-    // support array pattern
-    const arrayPath = [].concat(path).map(p => FormPath.getPath(p || '*'))
-    return this.validateNodes(arrayPath, options)
+    const pattern = FormPath.getPath(path || '*')
+    return this.validateNodes(pattern, options)
   }
 
   register = (path: FormPathPattern, calculator: ValidateCalculator) => {

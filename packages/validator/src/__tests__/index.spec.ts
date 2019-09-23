@@ -13,30 +13,6 @@ const batchTestRules = async (rules: any[], options?: any) => {
   await validator.validate()
 }
 
-test('array pattern', async () => {
-  const validator = new FormValidator()
-  const errorMap: { [key: string]: string[] } = {};
-  const requiredMsg = 'This field is required';
-  ['a', 'b', 'c'].forEach(key => {
-    validator.register(key, validate => {
-      validate('', { required: true, message: requiredMsg }).then(({ errors }) => {
-        errorMap[key] = errors
-      })
-    })  
-  })
-  const validateResponse = await validator.validate(['a', 'b'])
-  expect(errorMap.a).toEqual([requiredMsg])
-  expect(errorMap.b).toEqual([requiredMsg])
-  expect(errorMap.c).toEqual(undefined)
-  expect(validateResponse).toEqual({
-    errors: [
-      { path: 'a', messages: [requiredMsg] },
-      { path: 'b', messages: [requiredMsg] }
-    ],
-    warnings: []
-  })
-})
-
 test('register', async () => {
   const validator = new FormValidator()
   let errors1: string[]
@@ -55,7 +31,7 @@ test('register', async () => {
   expect(errors1).toEqual([])
   expect(errors2).toEqual(['This field is required'])
   expect(validateResponse).toEqual({
-    errors: [{ path: 'a.b.c', messages: ['Field is invalid'] }],
+    errors: [{ path: 'a.b.c', messages: ['This field is required'] }],
     warnings: []
   })
 })
@@ -67,7 +43,7 @@ test('required', async () => {
       rules: {
         required: true
       },
-      errors: ['This field is required'] 
+      errors: ['This field is required']
     },
     {
       value: '',
