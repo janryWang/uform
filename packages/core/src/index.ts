@@ -626,13 +626,13 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     onSubmit?: (values: IFormState['values']) => any | Promise<any>
   ): Promise<IFormSubmitResult> {
     // 重复提交，返回前一次的promise
-    if (state.getState(state => state.submitting)) return submittingTask
+    if (state.getState(state => state.submitting)) return env.submittingTask
     onSubmit = onSubmit || options.onSubmit
     state.setState(state => {
       state.submitting = true
     })
     heart.notify(LifeCycleTypes.ON_FORM_SUBMIT_START, state)
-    submittingTask = validate()
+    env.submittingTask = validate()
       .then(validated => {
         if (isFn(onSubmit)) {
           return Promise.resolve(
@@ -657,7 +657,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
         }
         return response
       })
-    return submittingTask
+    return env.submittingTask
   }
 
   function mergeMessages(
@@ -935,7 +935,8 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     leadingStage: false,
     taskQueue: [],
     taskIndexes: {},
-    removeNodes: {}
+    removeNodes: {},
+    submittingTask: undefined,
   }
   heart.notify(LifeCycleTypes.ON_FORM_WILL_INIT, state)
   state.subscribe(onFormChange)
@@ -943,7 +944,6 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
   state.setState((state: IFormState) => {
     state.initialized = true
   })
-  let submittingTask
   return formApi
 }
 
