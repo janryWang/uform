@@ -365,9 +365,9 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
         })
       })
       validator.register(path, validate => {
-        const { value, rules, editable, visible, unmounted, display } = field.getState()
-        // 不需要校验的情况有: 非编辑态(editable)，已销毁(unmounted), 视觉/逻辑上不可见(visible/display)
-        if (editable === false || visible === false || display === false || unmounted === true)
+        const { value, rules, editable, visible, unmounted } = field.getState()
+        // 不需要校验的情况有: 非编辑态(editable)，已销毁(unmounted), 逻辑上不可见(visible)
+        if (editable === false || visible === false || unmounted === true)
           return validate(value, [])
         clearTimeout((field as any).validateTimer)
         ;(field as any).validateTimer = setTimeout(() => {
