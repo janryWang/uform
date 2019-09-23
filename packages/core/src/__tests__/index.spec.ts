@@ -299,15 +299,33 @@ describe('validate', () => {
   })
 
   test('validate basic', async () => {
-    const form = createForm()
+    const onValidateStart = jest.fn()
+    const onValidateEnd = jest.fn()
+    const form = createForm({
+      lifecycles: [
+        new FormLifeCycle(LifeCycleTypes.ON_FORM_VALIDATE_START, onValidateStart),
+        new FormLifeCycle(LifeCycleTypes.ON_FORM_VALIDATE_END, onValidateEnd),
+      ],
+    })
     form.registerField({ path: 'a', rules: ['number'] }) // string
-    form.registerField({ path: 'b', rules: [() => ({ type: 'warning', message: 'warning msg' })] }) // CustomValidator
-    form.registerField({ path: 'c', rules: [() => ({ type: 'error', message: 'warning msg' })] }) // CustomValidator
-    form.registerField({ path: 'd', rules: [() => 'straight error msg'] }) // CustomValidator
+    form.registerField({ path: 'b', rules: [() => ({ type: 'warning', message: 'warning msg' })] }) // CustomValidator warning
+    form.registerField({ path: 'c', rules: [() => ({ type: 'error', message: 'warning msg' })] }) // CustomValidator error
+    form.registerField({ path: 'd', rules: [() => 'straight error msg'] }) // CustomValidator string
     form.registerField({ path: 'e', rules: [{ required: true, message: 'desc msg' }] }) // ValidateDescription
-    const { warnings, errors } = await form.validate()
-    expect(warnings.length).toEqual(1)
-    expect(errors.length).toEqual(4)
+
+    expect(onValidateStart).toBeCalledTimes(0)
+    expect(onValidateEnd).toBeCalledTimes(0)
+    // expect(form.getFormState(state => state.validating)).toEqual(false)
+    const validatePromise = form.validate()
+    // expect(form.getFormState(state => state.validating)).toEqual(true)
+    expect(onValidateStart).toBeCalledTimes(1)
+    validatePromise.then((validated) => {
+      // expect(form.getFormState(state => state.validating)).toEqual(false)
+      expect(onValidateEnd).toBeCalledTimes(1)
+      const { warnings, errors } = validated;
+      expect(warnings.length).toEqual(1)
+      expect(errors.length).toEqual(4)
+    })
   })
 })
 
