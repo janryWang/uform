@@ -14,7 +14,6 @@
     "sort-api": "node ./scripts/sort-api-table.js",
     "test": "npm run lint && jest",
     "test:core": "jest --watch packages/core/src/__tests__/index.spec.ts",
-    "test:validator": "jest --watch packages/validator/src/__tests__/index.spec.ts",
     "test:prod": "cross-env TEST_ENV=production npm run build && jest",
     "doc:core": "doc-scripts start -i packages/core",
     "doc:react": "doc-scripts start -i packages/react",
