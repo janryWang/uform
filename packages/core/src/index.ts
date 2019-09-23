@@ -574,10 +574,10 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     }
   }
 
-  function reset({
+  async function reset({
     forceClear = false,
     validate = true
-  }: IFormResetOptions = {}) {
+  }: IFormResetOptions = {}): Promise<void | IFormValidateResult> {
     leadingUpdate(() => {
       graph.eachChildren('', field => {
         field.setState((state: IFieldState) => {
@@ -617,7 +617,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
         options.onReset()
       }
       if (validate) {
-        formApi.validate()
+        return formApi.validate()
       }
     })
   }
@@ -684,9 +684,10 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
   }
 
   async function validate(
-    path?: FormPathPattern,
+    path?: FormPathPattern | Array<FormPathPattern>,
     opts?: {}
   ): Promise<IFormValidateResult> {
+    // TODO: 全局不会引起重绘，不需要setTimeout控制频率
     clearTimeout(env.validateTimer)
     env.validateTimer = setTimeout(() => {
       state.setState(state => {
