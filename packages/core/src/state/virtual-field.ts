@@ -31,7 +31,7 @@ export const VirtualFieldState = createStateModel<
 
     private state: IVirtualFieldState
 
-    private path: FormPath
+    public path: FormPath
 
     constructor(state: IVirtualFieldState, props: IVirtualFieldStateProps) {
       this.state = state

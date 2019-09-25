@@ -1,5 +1,5 @@
 import { createStateModel } from '../shared/model'
-import { toArr, clone, isEqual } from '@uform/shared'
+import { toArr, clone, isEqual, FormPath } from '@uform/shared'
 import { IFormState, IFormStateProps } from '../types'
 /**
  * 核心数据结构，描述Form级别状态
@@ -30,12 +30,15 @@ export const FormState = createStateModel<IFormState, IFormStateProps>(
     }
 
     private state: IFormState
-
+    public path: FormPath
     constructor(state: IFormState, props: IFormStateProps) {
       this.state = state
       this.state.initialValues = clone(props.initialValues || {})
       this.state.values = clone(props.values || props.initialValues || {})
-      this.state.editable = props.editable
+      if (props.editable !== undefined) {
+        this.state.editable = props.editable
+      }      
+      this.path = new FormPath("")
     }
 
     computeState(draft: IFormState, prevState: IFormState) {

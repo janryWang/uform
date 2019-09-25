@@ -1,4 +1,4 @@
-import { clone, isEqual, isFn, each, globalThisPolyfill } from '@uform/shared'
+import { clone, isEqual, isFn, each, globalThisPolyfill, FormPath } from '@uform/shared'
 import produce, { Draft } from 'immer'
 import {
   IStateModelFactory,
@@ -17,11 +17,12 @@ export const createStateModel = <State = {}, Props = {}>(
     public state: State & { displayName?: string }
     public props: Props & DefaultProps & { useDirty?: boolean }
     public displayName?: string
+    public path: FormPath
     public dirtyNum: number
     public dirtyMap: StateDirtyMap<State>
     public subscribers: Subscriber<State>[]
     public batching: boolean
-    public controller: StateModel<State>
+    public controller: StateModel<State>    
     constructor(defaultProps: DefaultProps) {
       this.state = { ...Factory.defaultState }
       this.props = {
@@ -35,6 +36,7 @@ export const createStateModel = <State = {}, Props = {}>(
       this.controller = new Factory(this.state, this.props)
       this.displayName = Factory.displayName
       this.state.displayName = this.displayName
+      this.path = this.controller.path
     }
 
     subscribe = (callback?: Subscriber<State>) => {

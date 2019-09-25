@@ -39,18 +39,18 @@ export const FieldState = createStateModel<IFieldState, IFieldStateProps>(
 
     static defaultProps = {
       path: '',
-      editable: true,
       props: {}
     }
 
     private state: IFieldState
 
-    private path: FormPath
+    public path: FormPath
 
     constructor(state: IFieldState, props: IFieldStateProps) {
       this.state = state
       this.path = FormPath.getPath(props.path)
       this.state.name = this.path.entire
+      this.state.editable = props.editable
     }
 
     parseValues({ value, values }: IFieldStateProps) {
