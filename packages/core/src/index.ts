@@ -323,7 +323,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     initialValue,
     required,
     rules,
-    editable = true, // priority > field(default props)
+    editable,
     onChange,
     props
   }: IFieldStateProps): IField {
@@ -333,7 +333,6 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
       field = graph.select(path)
     } else {
       field = new FieldState({
-        editable,
         path,
         useDirty: options.useDirty
       })
@@ -361,7 +360,8 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
           state.props = props
           state.required = required
           state.rules = rules as any
-          state.formEditable = options.editable === undefined ? true : options.editable
+          state.editable = editable
+          state.formEditable = options.editable
         })
       })
       validator.register(path, validate => {
@@ -578,9 +578,8 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     // 1. 指定路径或全部子路径清理
     const path = FormPath.getPath(pattern);
     graph.eachChildren('', field => {
-      if (isField(field) && (!pattern || path.match(field.path))) {
+      if (isField(field) && (!pattern || path.match(field.state.name))) {
         field.setState(state => {
-          state.modified = false
           state.errors = []
           state.warnings = []
           state.effectErrors = []
@@ -591,7 +590,6 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
 
     // 2. 全局同步指定路径校验信息
     const msgs = getMergeMessages();
-    console.log(msgs);
     state.setState(state => {
       state.warnings = msgs.warnings
       state.errors = msgs.errors
@@ -690,12 +688,12 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
       // 命中path或全局校验时整合校验信息，前提是非virtualField
       if (isField(field)) {
         field.getState(({ errors, warnings } )=> {
-          const { entire } = field.path;
+          const { name } = field.state;
           if (warnings.length > 0) {
-            msgs.warnings.push({ path: entire, messages: warnings })  
+            msgs.warnings.push({ path: name, messages: warnings })  
           }
           if (errors.length > 0) {
-            msgs.errors.push({ path: entire, messages: errors })  
+            msgs.errors.push({ path: name, messages: errors })  
           }
         });
       }

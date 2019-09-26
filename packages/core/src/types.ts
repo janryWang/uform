@@ -93,7 +93,6 @@ export type StateDirtyMap<P> = {
 }
 
 export interface StateModel<P> {
-  path: FormPath
   publishState?: (state: P) => P
   dirtyCheck?: (dirtys: StateDirtyMap<P>) => StateDirtyMap<P> | void
   computeState?: (state: Draft<P>, preState?: P) => Draft<P> | void
@@ -257,7 +256,6 @@ export interface IMutators {
 export type Subscriber<S> = (payload: S) => void
 
 export interface IModel<S = {}, P = {}> {
-  path: FormPath
   state: S
   props: P
   displayName?: string
