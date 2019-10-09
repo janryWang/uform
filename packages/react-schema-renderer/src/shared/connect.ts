@@ -5,7 +5,7 @@ import {
   IConnectOptions,
   ISchemaFieldComponentProps,
   IConnectProps
-} from './types'
+} from '../types'
 
 const createEnum = (enums: any) => {
   if (isArr(enums)) {
@@ -58,6 +58,7 @@ export const connect = (options?: IConnectOptions) => {
       let componentProps: IConnectProps = {
         ...options.defaultProps,
         ...schema.getExtendsProps(),
+        ...schema.getExtendsComponentProps(),
         [options.valueName]: value,
         [options.eventName]: (event: any, ...args: any[]) => {
           mutators.change(
@@ -66,7 +67,9 @@ export const connect = (options?: IConnectOptions) => {
               : event,
             ...args
           )
-        }
+        },
+        onBlur: () => mutators.blur(),
+        onFocus: () => mutators.focus()
       }
       if (editable !== undefined) {
         if (isFn(editable)) {

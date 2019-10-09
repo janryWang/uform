@@ -6,6 +6,7 @@ import {
   FormPath,
   FormPathPattern
 } from '@uform/shared'
+import { Subscrible } from './subscrible'
 import { FormGraphNodeRef, FormGraphMatcher, FormGraphEacher } from '../types'
 /**
  * Form & Field 其实是属于一种图的关系，我们可以进一步抽象
@@ -13,7 +14,10 @@ import { FormGraphNodeRef, FormGraphMatcher, FormGraphEacher } from '../types'
  * 临时存放，后面会放在@uform/shared中
  */
 
-export class FormGraph<NodeType = any> {
+export class FormGraph<NodeType = any> extends Subscrible<{
+  type: string
+  payload: FormGraphNodeRef
+}> {
   private refrences: {
     [key in string]: FormGraphNodeRef
   }
@@ -32,12 +36,13 @@ export class FormGraph<NodeType = any> {
   }[]
 
   constructor() {
+    super()
     this.refrences = {}
     this.nodes = {}
     this.buffer = []
   }
 
-  select = (path: FormPathPattern, matcher?: FormGraphMatcher<NodeType>) => {
+  select(path: FormPathPattern, matcher?: FormGraphMatcher<NodeType>) {
     const newPath = FormPath.getPath(path)
     if (newPath.isMatchPattern) {
       this.eachChildren([], (child: NodeType, childPath: FormPath) => {
@@ -56,15 +61,15 @@ export class FormGraph<NodeType = any> {
     }
   }
 
-  getNode = (path: FormPath | string) => {
+  getNode(path: FormPath | string) {
     return this.nodes[path as string]
   }
 
-  selectParent = (path: FormPathPattern) => {
+  selectParent(path: FormPathPattern) {
     return this.getNode(FormPath.getPath(path).parent())
   }
 
-  selectChildren = (path: FormPathPattern) => {
+  selectChildren(path: FormPathPattern) {
     const ref = this.refrences[FormPath.getPath(path).toString()]
     if (ref && ref.children) {
       return reduce(
@@ -80,26 +85,52 @@ export class FormGraph<NodeType = any> {
     return []
   }
 
-  exist = (path: FormPathPattern) => {
+  exist(path: FormPathPattern) {
     return !!this.getNode(FormPath.getPath(path))
   }
 
   /**
    * 递归遍历所有children
    */
-  eachChildren = (
+  eachChildren(eacher: FormGraphEacher<NodeType>, recursion?: boolean): void
+  eachChildren(
     path: FormPathPattern,
     eacher: FormGraphEacher<NodeType>,
-    recursion: boolean = true
-  ) => {
+    recursion?: boolean
+  ): void
+  eachChildren(
+    path: FormPathPattern,
+    selector: FormPathPattern,
+    eacher: FormGraphEacher<NodeType>,
+    recursion?: boolean
+  ): void
+  eachChildren(
+    path: any,
+    selector: any = true,
+    eacher: any = true,
+    recursion: any = true
+  ) {
+    if (isFn(path)) {
+      recursion = selector
+      eacher = path
+      path = ''
+      selector = '*'
+    }
+    if (isFn(selector)) {
+      recursion = eacher
+      eacher = selector
+      selector = '*'
+    }
     const ref = this.refrences[FormPath.getPath(path).toString()]
     if (ref && ref.children) {
       return each(ref.children, path => {
         if (isFn(eacher)) {
           const node = this.getNode(path)
-          if (node) {
+          if (node && FormPath.parse(path).match(selector)) {
             eacher(node, path)
-            if (recursion) this.eachChildren(path, eacher, recursion)
+            if (recursion) {
+              this.eachChildren(path, selector, eacher, recursion)
+            }
           }
         }
       })
@@ -109,7 +140,7 @@ export class FormGraph<NodeType = any> {
   /**
    * 递归遍历所有parent
    */
-  eachParent = (path: FormPathPattern, eacher: FormGraphEacher<NodeType>) => {
+  eachParent(path: FormPathPattern, eacher: FormGraphEacher<NodeType>) {
     const selfPath = FormPath.getPath(path)
     const ref = this.refrences[selfPath.toString()]
     if (isFn(eacher)) {
@@ -120,7 +151,7 @@ export class FormGraph<NodeType = any> {
     }
   }
 
-  getLatestParent = (path: FormPathPattern) => {
+  getLatestParent(path: FormPathPattern) {
     const selfPath = FormPath.getPath(path)
     const parentPath = FormPath.getPath(path).parent()
     if (selfPath.toString() === parentPath.toString()) return undefined
@@ -129,18 +160,18 @@ export class FormGraph<NodeType = any> {
     return this.getLatestParent(parentPath)
   }
 
-  map = (mapper: (node: NodeType) => any) => {
+  map(mapper: (node: NodeType) => any) {
     return map(this.nodes, mapper)
   }
 
-  reduce = <T>(
+  reduce<T>(
     reducer: (buffer: T, node: NodeType, key: string) => T,
     initial: T
-  ) => {
+  ) {
     return reduce(this.nodes, reducer, initial)
   }
 
-  appendNode = (path: FormPathPattern, node: NodeType) => {
+  appendNode(path: FormPathPattern, node: NodeType) {
     const selfPath = FormPath.getPath(path)
     const parentPath = selfPath.parent()
     const parentRef = this.refrences[parentPath.toString()]
@@ -182,12 +213,20 @@ export class FormGraph<NodeType = any> {
         this.buffer.splice(index, 1)
       }
     })
+    this.notify({
+      type: 'GRAPH_NODE_DID_MOUNT',
+      payload: selfRef
+    })
   }
 
-  remove = (path: FormPathPattern) => {
+  remove(path: FormPathPattern) {
     const selfPath = FormPath.getPath(path)
     const selfRef = this.refrences[selfPath.toString()]
     if (!selfRef) return
+    this.notify({
+      type: 'GRAPH_NODE_WILL_UNMOUNT',
+      payload: selfRef
+    })
     if (selfRef.children) {
       selfRef.children.forEach(path => {
         this.remove(path)

@@ -6,8 +6,7 @@ import {
   SchemaMarkupForm as SchemaForm,
   SchemaMarkupField as Field,
   createFormActions,
-  createSchemaFormActions,
-  cleanup
+  cleanRegistry
 } from '../index'
 import { render, fireEvent, wait } from '@testing-library/react'
 
@@ -22,7 +21,7 @@ describe('test all apis', () => {
   })
 
   afterEach(() => {
-    cleanup()
+    cleanRegistry()
   })
 
   test('markup string', async () => {
@@ -66,7 +65,7 @@ describe('test all apis', () => {
       }
     )
 
-    const actions = createSchemaFormActions()
+    const actions = createFormActions()
 
     const { queryByTestId } = render(
       <SchemaForm actions={actions}>
