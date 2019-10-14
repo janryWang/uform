@@ -36,9 +36,9 @@ import {
   IField,
   IVirtualField,
   isField,
-  isFieldState,
   FormHeartSubscriber,
-  LifeCycleTypes
+  LifeCycleTypes,
+  isVirtualField
 } from './types'
 export * from './shared/lifecycle'
 export * from './types'
@@ -110,7 +110,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
                   }
                   if (removed) return
                   if (!isEqual(value, state.value)) {
-                    state.value = value
+                    state.value = isValid(value) ? value : state.initialValue
                   }
                 }
                 if (initialValuesChanged) {
@@ -167,8 +167,6 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
       const initializedChanged = field.hasChanged('initialized')
       const warningsChanged = field.hasChanged('warnings')
       const errorsChanges = field.hasChanged('errors')
-      const effectWarningsChanged = field.hasChanged('effectWarnings')
-      const effectErrorsChanged = field.hasChanged('effectErrors')
       if (initializedChanged) {
         heart.notify(LifeCycleTypes.ON_FIELD_INIT, field)
         const isEmptyValue = !isValid(published.value)
@@ -239,16 +237,12 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
         heart.notify(LifeCycleTypes.ON_FIELD_INITIAL_VALUE_CHANGE, field)
       }
 
-      if (errorsChanges || effectErrorsChanged) {
-        combineMessages('errors', published.name, [].concat(published.errors))
+      if (errorsChanges) {
+        syncFormMessages('errors', published.name, published.errors)
       }
 
-      if (warningsChanged || effectWarningsChanged) {
-        combineMessages(
-          'warnings',
-          published.name,
-          [].concat(published.warnings, published.effectWarnings)
-        )
+      if (warningsChanged) {
+        syncFormMessages('warnings', published.name, published.warnings)
       }
 
       if (isFn(onChange) && (!env.shadowStage || env.leadingStage)) {
@@ -258,8 +252,9 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     }
   }
 
-  function combineMessages(type: string, path: string, messages: string[]) {
-    state.setState(state => {
+  //实时同步Form Messages
+  function syncFormMessages(type: string, path: string, messages: string[]) {
+    state.unsafe_setSourceState(state => {
       let foundField = false
       state[type] = state[type] || []
       state[type] = state[type].reduce((buf: any, item: any) => {
@@ -276,7 +271,14 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
           messages
         })
       }
-    }, true)
+      if (state.errors.length) {
+        state.invalid = true
+        state.valid = false
+      } else {
+        state.invalid = false
+        state.valid = true
+      }
+    })
   }
 
   function onVirtualFieldChange({ onChange, field, path }) {
@@ -414,8 +416,8 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
           clearTimeout((field as any).validateTimer)
           field.setState((state: IFieldState) => {
             state.validating = false
-            state.errors = errors
-            state.warnings = warnings
+            state.ruleErrors = errors
+            state.ruleWarnings = warnings
           })
         })
       })
@@ -429,11 +431,16 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
       const realPath = newPath.slice(0, index + 1)
       const dataPath = path.concat(key)
       const selected = graph.select(realPath)
-      if (selected && selected.displayName === 'VirtualFieldState') {
+      if (isVirtualField(selected)) {
         return path
       }
       return dataPath
     }, FormPath.getPath(''))
+  }
+
+  function transformVirtualPath(path: FormPathPattern) {
+    const newPath = FormPath.getPath(path)
+    return newPath.slice(newPath.length - 1)
   }
 
   function setFormIn(
@@ -632,8 +639,8 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     graph.eachChildren('', pattern, field => {
       if (isField(field)) {
         field.setState(state => {
-          state.errors = []
-          state.warnings = []
+          state.ruleErrors = []
+          state.ruleWarnings = []
           state.effectErrors = []
           state.effectWarnings = []
         })
@@ -650,9 +657,9 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
       graph.eachChildren(field => {
         field.setState((state: IFieldState) => {
           state.modified = false
-          state.errors = []
+          state.ruleErrors = []
+          state.ruleWarnings = []
           state.effectErrors = []
-          state.warnings = []
           state.effectWarnings = []
           // forceClear仅对设置initialValues的情况下有意义
           if (forceClear || !isValid(state.initialValue)) {
@@ -704,6 +711,14 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     heart.notify(LifeCycleTypes.ON_FORM_SUBMIT_START, state)
     env.submittingTask = validate()
       .then(validated => {
+        const { errors } = validated
+        if (errors.length) {
+          state.setState(state => {
+            state.submitting = false
+          })
+          heart.notify(LifeCycleTypes.ON_FORM_SUBMIT_END, state)
+          return Promise.reject(errors)
+        }
         if (isFn(onSubmit)) {
           return Promise.resolve(
             onSubmit(state.getState(state => state.values))
@@ -752,9 +767,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
         state.validating = false
       })
       if (isFn(options.onValidateFailed)) {
-        options.onValidateFailed(
-          state.getState(({ errors, warnings }) => ({ errors, warnings }))
-        )
+        options.onValidateFailed(payload)
       }
       heart.notify(LifeCycleTypes.ON_FORM_VALIDATE_END, state)
       return payload
@@ -763,7 +776,7 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
 
   function setFormState(callback?: (state: IFormState) => any) {
     leadingUpdate(() => {
-      state.setState(computeUserFormState(callback, state))
+      state.setState(callback)
     })
   }
 
@@ -774,9 +787,9 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
   function batchRunTaskQueue(field: IField | IVirtualField) {
     env.taskQueue.forEach((task, index) => {
       const { path, callbacks } = task
-      if (path.match(field.unsafe_getSourceState(state => state.name))) {
+      if (monkeyMatch(path, field)) {
         callbacks.forEach(callback => {
-          field.setState(computeUserState(callback, field))
+          field.setState(callback)
         })
         if (!path.isWildMatchPattern && !path.isMatchPattern) {
           env.taskQueue.splice(index, 1)
@@ -790,6 +803,14 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     })
   }
 
+  function monkeyMatch(path: FormPath, field: IField | IVirtualField) {
+    const name = field.unsafe_getSourceState(state => state.name)
+    const monkey = isField(field)
+      ? transformDataPath(name)
+      : transformVirtualPath(name)
+    return path.match(name) || path.match(monkey)
+  }
+
   function setFieldState(
     path: FormPathPattern,
     callback?: (state: IFieldState) => void
@@ -797,9 +818,11 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
     if (!isFn(callback)) return
     let matchCount = 0
     let newPath = FormPath.getPath(path)
-    graph.select(newPath, field => {
-      field.setState(computeUserState(callback, field))
-      matchCount++
+    graph.each(field => {
+      if (monkeyMatch(newPath, field)) {
+        field.setState(callback)
+        matchCount++
+      }
     })
     if (matchCount === 0 || newPath.isWildMatchPattern) {
       let taskIndex = env.taskIndexes[newPath.toString()]
@@ -837,44 +860,6 @@ export const createForm = (options: IFormCreatorOptions = {}): IForm => {
 
   function getFieldInitialValue(path?: FormPathPattern) {
     return getFormInitialValuesIn(path)
-  }
-
-  function computeUserState<
-    State = IFieldState | IVirtualFieldState,
-    Field = IField | IVirtualField
-  >(callback: (state: State) => void, field: Field) {
-    return (draft: State) => {
-      if (isFn(callback) && isField(field) && isFieldState(draft)) {
-        const oldErrors = draft.errors
-        const oldWarnings = draft.warnings
-        const oldFormEditable = draft.formEditable
-        callback(draft)
-        if (!isEqual(oldErrors, draft.errors)) {
-          draft.effectErrors = draft.errors
-        }
-        if (!isEqual(oldWarnings, draft.warnings)) {
-          draft.effectWarnings = draft.warnings
-        }
-        draft.errors = oldErrors
-        draft.warnings = oldWarnings
-        draft.formEditable = oldFormEditable
-      }
-    }
-  }
-
-  function computeUserFormState(
-    callback?: (state: IFormState) => void,
-    state?: typeof FormState.prototype
-  ) {
-    return (draft: IFormState) => {
-      if (isFn(callback)) {
-        callback(draft)
-        const errors = state.unsafe_getSourceState(state => state.errors)
-        const warnings = state.unsafe_getSourceState(state => state.warnings)
-        draft.errors = errors
-        draft.warnings = warnings
-      }
-    }
   }
 
   function getFieldState(

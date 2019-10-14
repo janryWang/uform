@@ -13,7 +13,7 @@ export const FormLayout = createVirtualBox<IFormItemTopProps>(
       isInline || props.className || props.style ? (
         <div
           className={cls(props.className, {
-            'next-form next-inline': isInline
+            'ant-form ant-form-inline': isInline
           })}
           style={props.style}
         >

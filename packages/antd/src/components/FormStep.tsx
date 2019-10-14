@@ -8,7 +8,7 @@ import {
 } from '@uform/react-schema-renderer'
 import { toArr } from '@uform/shared'
 import { Observable } from 'rxjs/internal/Observable'
-import { Step } from '@alifd/next'
+import { Steps } from 'antd'
 import { IFormStep } from '../types'
 
 enum StateMap {
@@ -84,11 +84,11 @@ export const FormStep: React.FC<IFormStep> &
     }, [])
     ref.current = current
     return (
-      <Step {...stepProps} current={current}>
+      <Steps {...stepProps} current={current}>
         {items.map((props, key) => {
-          return <Step.Item {...props} key={key} />
+          return <Steps.Step {...props} key={key} />
         })}
-      </Step>
+      </Steps>
     )
   }
 ) as any

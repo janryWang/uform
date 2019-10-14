@@ -1,6 +1,9 @@
-import { ButtonProps } from '@alifd/next/types/button'
-import { FormProps, ItemProps } from '@alifd/next/types/form'
-import { StepProps, ItemProps as StepItemProps } from '@alifd/next/types/step'
+import { ButtonProps } from 'antd/lib/button'
+import { FormProps, FormItemProps as ItemProps } from 'antd/lib/form'
+import {
+  StepsProps as StepProps,
+  StepProps as StepItemProps
+} from 'antd/lib/steps'
 import {
   ISchemaFormProps,
   IMarkupSchemaFieldProps,
@@ -28,15 +31,7 @@ export interface IResetProps extends ButtonProps {
 
 export type IFormItemTopProps = React.PropsWithChildren<
   Exclude<
-    Pick<
-      ItemProps,
-      | 'prefix'
-      | 'labelCol'
-      | 'wrapperCol'
-      | 'labelAlign'
-      | 'labelTextAlign'
-      | 'size'
-    >,
+    Pick<ItemProps, 'prefixCls' | 'labelCol' | 'wrapperCol' | 'labelAlign'>,
     'labelCol' | 'wrapperCol'
   > & {
     inline?: boolean

@@ -15,10 +15,11 @@ export interface ISchemaFieldProps {
   path?: FormPathPattern
 }
 
-export type ComponentWithStyleComponent<ComponentProps> = React.ComponentType<
+export type ComponentWithStyleComponent<
   ComponentProps
-> & {
+> = React.JSXElementConstructor<ComponentProps> & {
   styledComponentId?: string
+  displayName?: string
 }
 
 export interface ISchemaFieldComponentProps extends IFieldState {
@@ -146,6 +147,10 @@ export interface IMarkupSchemaFieldProps extends ISchema {
   name?: string
 }
 
+export type MergedFieldComponentProps = Partial<
+  ISchemaFieldComponentProps & ISchemaVirtualFieldComponentProps
+>
+
 export interface IConnectOptions {
   valueName?: string
   eventName?: string
@@ -153,12 +158,12 @@ export interface IConnectOptions {
   getValueFromEvent?: (event?: any, value?: any) => any
   getProps?: (
     componentProps: {},
-    fieldProps: ISchemaFieldComponentProps | ISchemaVirtualFieldComponentProps
+    fieldProps: MergedFieldComponentProps
   ) => {} | void
   getComponent?: (
     Target: any,
     componentProps: {},
-    fieldProps: ISchemaFieldComponentProps | ISchemaVirtualFieldComponentProps
+    fieldProps: MergedFieldComponentProps
   ) => React.JSXElementConstructor<any>
 }
 

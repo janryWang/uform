@@ -1,4 +1,3 @@
-import React from 'react'
 import { isFn, FormPath, globalThisPolyfill } from '@uform/shared'
 import { IFormEffect, IFormActions, IFormAsyncActions } from './types'
 import { Observable } from 'rxjs/internal/Observable'
@@ -12,8 +11,11 @@ import {
   IVirtualFieldState
 } from '@uform/core'
 
-export const createFormActions = (): IFormActions =>
-  createActions(
+export const createFormActions = (): IFormActions => {
+  if (env.currentActions) {
+    return env.currentActions
+  }
+  return createActions(
     'submit',
     'reset',
     'validate',
@@ -26,11 +28,13 @@ export const createFormActions = (): IFormActions =>
     'subscribe',
     'unsubscribe',
     'notify',
+    'dispatch',
     'setFieldValue',
     'getFieldValue',
     'setFieldInitialValue',
     'getFieldInitialValue'
   ) as IFormActions
+}
 
 export const createAsyncFormActions = (): IFormAsyncActions =>
   createAsyncActions(
@@ -46,6 +50,7 @@ export const createAsyncFormActions = (): IFormAsyncActions =>
     'subscribe',
     'unsubscribe',
     'notify',
+    'dispatch',
     'setFieldValue',
     'getFieldValue',
     'setFieldInitialValue',
@@ -57,8 +62,9 @@ export interface IEventTargetOption {
   value: any
 }
 
-const isEvent = (candidate: React.SyntheticEvent): boolean =>
-  !!(candidate && candidate.stopPropagation && candidate.preventDefault)
+const isEvent = (candidate: any): boolean =>
+  candidate &&
+  (candidate.stopPropagation || candidate.preventDefault || candidate.bubbles)
 
 const isReactNative =
   typeof window !== 'undefined' &&
@@ -141,7 +147,8 @@ const getScheduler = () => {
 export const env = {
   effectStart: false,
   effectSelector: null,
-  effectEnd: false
+  effectEnd: false,
+  currentActions: null
 }
 
 export const [raf, caf] = getScheduler()
@@ -154,6 +161,7 @@ export const createFormEffects = <Payload = any, Actions = {}>(
     return (selector: (type: string) => Observable<any>) => {
       env.effectEnd = false
       env.effectStart = true
+      env.currentActions = actions
       env.effectSelector = <T = any>(
         type: string,
         matcher?: string | ((payload: T) => boolean)
@@ -178,15 +186,16 @@ export const createFormEffects = <Payload = any, Actions = {}>(
       effects(env.effectSelector, actions)
       env.effectStart = false
       env.effectEnd = true
+      env.currentActions = null
     }
   } else {
     return () => {}
   }
 }
 
-export const createEffectHook = <T>(type: string) => (
-  ...args: any[]
-): Observable<T> => {
+export const createEffectHook = <TResult, Props extends Array<any> = any[]>(
+  type: string
+) => (...args: Props): Observable<TResult> => {
   if (!env.effectStart || env.effectEnd) {
     throw new Error(
       'EffectHook must be called synchronously within the effects callback function.'
@@ -197,6 +206,8 @@ export const createEffectHook = <T>(type: string) => (
   }
   return env.effectSelector(type, ...args)
 }
+
+type FieldMergeState = Partial<IFieldState> & Partial<IVirtualFieldState>
 
 export const FormEffectHooks = {
   onFormWillInit$: createEffectHook<IFormState>(
@@ -234,19 +245,17 @@ export const FormEffectHooks = {
     LifeCycleTypes.ON_FORM_GRAPH_CHANGE
   ),
 
-  onFieldWillInit$: createEffectHook<IFieldState | IVirtualFieldState>(
+  onFieldWillInit$: createEffectHook<FieldMergeState>(
     LifeCycleTypes.ON_FIELD_WILL_INIT
   ),
-  onFieldInit$: createEffectHook<IFieldState | IVirtualFieldState>(
-    LifeCycleTypes.ON_FIELD_INIT
-  ),
-  onFieldChange$: createEffectHook<IFieldState | IVirtualFieldState>(
+  onFieldInit$: createEffectHook<FieldMergeState>(LifeCycleTypes.ON_FIELD_INIT),
+  onFieldChange$: createEffectHook<FieldMergeState>(
     LifeCycleTypes.ON_FIELD_CHANGE
   ),
-  onFieldMount$: createEffectHook<IFieldState | IVirtualFieldState>(
+  onFieldMount$: createEffectHook<FieldMergeState>(
     LifeCycleTypes.ON_FIELD_MOUNT
   ),
-  onFieldUnmount$: createEffectHook<IFieldState | IVirtualFieldState>(
+  onFieldUnmount$: createEffectHook<FieldMergeState>(
     LifeCycleTypes.ON_FIELD_UNMOUNT
   ),
   onFieldInputChange$: createEffectHook<IFieldState>(
