@@ -180,8 +180,8 @@ export function createForm(options: IFormCreatorOptions = {}) {
         notifyFormValuesChange()
       }
       if (initialValuesChanged) {
-        each(published.initialValues, (value, key) => {
-          if (!isValid(published.values[key])) {
+        each(published.initialValues, (value: any, key: any) => {
+          if (!graph.exist(key)) {
             setFormValuesIn(key, value, true)
           }
         })
