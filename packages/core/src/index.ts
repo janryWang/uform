@@ -180,6 +180,11 @@ export function createForm(options: IFormCreatorOptions = {}) {
         notifyFormValuesChange()
       }
       if (initialValuesChanged) {
+        each(published.initialValues, (value, key) => {
+          if (!isValid(published.values[key])) {
+            setFormValuesIn(key, value, true)
+          }
+        })
         notifyFormInitialValuesChange()
       }
     }
